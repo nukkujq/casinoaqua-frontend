@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8" />
+<title>Blackjack</title>
+<style>
+  body { font-family: sans-serif; background: #f3f4f6; text-align: center; padding: 20px; }
+  .topbar { margin-bottom: 20px; }
+  .button { padding: 8px 14px; margin: 5px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; }
+  .green { background: #4CAF50; color: white; }
+  .red { background: #e74c3c; color: white; }
+  .gray { background: #ccc; }
+  #hand, #dealer-hand { margin: 10px auto; max-width: 400px; display: flex; justify-content: center; gap: 8px; }
+  .card {
+    width: 60px; height: 90px; border-radius: 8px; background: white; border: 2px solid #444;
+    display: flex; flex-direction: column; justify-content: space-between; padding: 5px;
+    font-weight: bold; font-size: 20px; color: #222; box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+    user-select: none;
+  }
+  .card.red { color: #e74c3c; }
+  #result { font-size: 20px; margin-top: 15px; font-weight: bold; }
+  input[type=number] { width: 80px; font-size: 16px; padding: 6px; border-radius: 5px; border: 1px solid #aaa; text-align: center; }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a href="index.html" class="button gray">⬅ Takaisin valikkoon</a>
+  <button onclick="resetSaldo()" class="button red">Nollaa saldo</button>
+</div>
+
+<h2>🃏 Blackjack</h2>
+<p>Saldo: <span id="balance"></span>  Panos: <input id="bet" type="number" min="1" value="10" /></p>
+
+<div>
+  <button onclick="startGame()" class="button green">Aloita</button>
+  <button onclick="hit()" id="hitBtn" class="button gray" disabled>Hit</button>
+  <button onclick="stand()" id="standBtn" class="button gray" disabled>Stand</button>
+</div>
+
+<h3>Dealer:</h3>
+<div id="dealer-hand"></div>
+<p id="dealer-score"></p>
+
+<h3>Sinu:</h3>
+<div id="hand"></div>
+<p id="player-score"></p>
+
+<p id="result"></p>
+
+<script>
+const suits = ['♠', '♥', '♦', '♣'];
+const values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+
+let deck = [];
+let playerHand = [];
+let dealerHand = [];
+let saldo = 0;
+let bet = 0;
+let gameOver = false;
+let dealerTurning = false;
+
+function lataaSaldo(){
+  let s = localStorage.getItem("casino_saldo");
+  if (s === null){
+    s = 1000;
+    localStorage.setItem("casino_saldo", s);
+  }
+  saldo = parseInt(s);
+  document.getElementById("balance").textContent = saldo;
+}
+function tallennaSaldo(){
+  localStorage.setItem("casino_saldo", saldo);
+  document.getElementById("balance").textContent = saldo;
+}
+function resetSaldo(){
+  saldo = 1000;
+  tallennaSaldo();
+  resetGame();
+  document.getElementById('result').textContent = '';
+}
+
+function createDeck(){
+  deck = [];
+  for(let s=0; s<suits.length; s++){
+    for(let v=0; v<values.length; v++){
+      deck.push({suit: suits[s], value: values[v]});
+    }
+  }
+}
+
+function shuffleDeck(){
+  for(let i=deck.length-1; i>0; i--){
+    let j = Math.floor(Math.random()*(i+1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+}
+
+function cardValue(card){
+  if(['J','Q','K'].includes(card.value)) return 10;
+  if(card.value === 'A') return 11;
+  return parseInt(card.value);
+}
+
+function calcScore(hand){
+  let score = 0;
+  let aces = 0;
+  for(let card of hand){
+    score += cardValue(card);
+    if(card.value === 'A') aces++;
+  }
+  // A:n arvon säätö 11->1 jos yli 21
+  while(score > 21 && aces > 0){
+    score -= 10;
+    aces--;
+  }
+  return score;
+}
+
+function renderHand(elementId, hand, hideFirst=false){
+  const container = document.getElementById(elementId);
+  container.innerHTML = '';
+  for(let i=0; i<hand.length; i++){
+    const c = document.createElement('div');
+    c.className = 'card';
+    if(hand[i].suit === '♥' || hand[i].suit === '♦') c.classList.add('red');
+    if(i===0 && hideFirst){
+      c.textContent = '❓';
+      c.style.background = '#555';
+      c.style.color = '#555';
+      c.style.borderColor = '#333';
+    } else {
+      c.innerHTML = `<div>${hand[i].value}</div><div style="font-size:22px;">${hand[i].suit}</div>`;
+    }
+    container.appendChild(c);
+  }
+}
+
+function resetGame(){
+  playerHand = [];
+  dealerHand = [];
+  gameOver = false;
+  dealerTurning = false;
+  document.getElementById('result').textContent = '';
+  document.getElementById('dealer-score').textContent = '';
+  document.getElementById('player-score').textContent = '';
+  renderHand('dealer-hand', dealerHand, true);
+  renderHand('hand', playerHand);
+  document.getElementById('hitBtn').disabled = true;
+  document.getElementById('standBtn').disabled = true;
+}
+
+function startGame(){
+  resetGame();
+  bet = parseInt(document.getElementById('bet').value);
+  if(isNaN(bet) || bet < 1){
+    alert('Anna kelvollinen panos!');
+    return;
+  }
+  if(bet > saldo){
+    alert('Ei tarpeeksi saldoa.');
+    return;
+  }
+
+  saldo -= bet;
+  tallennaSaldo();
+
+  createDeck();
+  shuffleDeck();
+
+  playerHand.push(deck.pop());
+  dealerHand.push(deck.pop());
+  playerHand.push(deck.pop());
+  dealerHand.push(deck.pop());
+
+  renderHand('dealer-hand', dealerHand, true);
+  renderHand('hand', playerHand);
+  updateScores();
+
+  document.getElementById('hitBtn').disabled = false;
+  document.getElementById('standBtn').disabled = false;
+}
+
+function updateScores(hideDealerFirst=true){
+  const playerScore = calcScore(playerHand);
+  document.getElementById('player-score').textContent = `Pisteet: ${playerScore}`;
+  if(hideDealerFirst){
+    const dealerScore = calcScore(dealerHand.slice(1)); // piilotetaan ensimmäinen kortti
+    document.getElementById('dealer-score').textContent = `Dealer: ? + ${dealerScore}`;
+  } else {
+    const dealerScore = calcScore(dealerHand);
+    document.getElementById('dealer-score').textContent = `Dealer: ${dealerScore}`;
+  }
+}
+
+function hit(){
+  if(gameOver || dealerTurning) return;
+
+  playerHand.push(deck.pop());
+  renderHand('hand', playerHand);
+  updateScores();
+
+  const score = calcScore(playerHand);
+  if(score > 21){
+    endGame("Bust! Hävisit.");
+  }
+}
+
+function sleep(ms){
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function stand(){
+  if(gameOver || dealerTurning) return;
+  dealerTurning = true;
+  document.getElementById('hitBtn').disabled = true;
+  document.getElementById('standBtn').disabled = true;
+
+  renderHand('dealer-hand', dealerHand, false);
+  updateScores(false);
+
+  // Dealer nostaa kortteja yksi kerrallaan, pysähtyy 17 tai yli
+  while(calcScore(dealerHand) < 17){
+    await sleep(1000);
+    dealerHand.push(deck.pop());
+    renderHand('dealer-hand', dealerHand, false);
+    updateScores(false);
+  }
+
+  const playerScore = calcScore(playerHand);
+  const dealerScore = calcScore(dealerHand);
+
+  if(dealerScore > 21){
+    endGame("Dealer bust! Voitit!");
+    saldo += bet * 2;
+  } else if(dealerScore === playerScore){
+    endGame("Tasapeli.");
+    saldo += bet; // palautus
+  } else if(dealerScore > playerScore){
+    endGame("Hävisit.");
+  } else {
+    endGame("Voitit!");
+    saldo += bet * 2;
+  }
+  tallennaSaldo();
+  dealerTurning = false;
+}
+
+function endGame(message){
+  gameOver = true;
+  document.getElementById('result').textContent = message;
+  document.getElementById('hitBtn').disabled = true;
+  document.getElementById('standBtn').disabled = true;
+}
+
+lataaSaldo();
+resetGame();
+</script>
+</body>
+</html>

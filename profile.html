@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<title>Cyborg - Login Example</title>
+<link href="vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/fontawesome.css">
+<link rel="stylesheet" href="assets/css/templatemo-cyborg-gaming.css">
+</head>
+
+<body>
+
+<header class="header-area header-sticky">
+  <div class="container">
+    <nav class="main-nav">
+      <a href="index.html" class="logo"><img src="assets/images/logo.png" alt=""></a>
+      <ul class="nav">
+        <li><a href="#" id="loginRegisterBtn">Login / Register</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<!-- ***** Login/Register Modal ***** -->
+<div id="authModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:9999;">
+  <div style="background:white;width:300px;margin:100px auto;padding:20px;border-radius:10px;text-align:center;">
+    <h3>Login / Register</h3>
+    <input type="text" id="usernameInput" placeholder="Username" style="width:100%;margin-bottom:10px;padding:5px;">
+    <input type="password" id="passwordInput" placeholder="Password" style="width:100%;margin-bottom:10px;padding:5px;">
+    <br>
+    <button id="registerBtn" class="btn btn-primary" style="margin-bottom:5px;">Register</button>
+    <button id="loginBtn" class="btn btn-success" style="margin-bottom:5px;">Login</button>
+    <p id="message" style="color:red;"></p>
+    <button id="closeAuthModal" class="btn btn-secondary">Close</button>
+  </div>
+</div>
+
+<div class="container" id="profileContent">
+  <div class="row">
+    <div class="col-lg-12">
+      <div class="main-profile">
+        <div class="row">
+          <div class="col-lg-4">
+            <img src="assets/images/profile.jpg" alt="" style="border-radius: 23px;">
+          </div>
+          <div class="col-lg-4 align-self-center">
+            <div class="main-info header-text">
+              <span id="userStatus">Offline</span>
+              <h4 id="profileName">Guest</h4>
+              <p id="profileText">You haven't gone live yet. Go Live by clicking the button below.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="container">
+    <div class="row">
+      <div class="col-lg-12">
+        <p>Copyright © 2036 <a href="#">Cyborg Gaming</a></p>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<script src="vendor/jquery/jquery.min.js"></script>
+<script src="vendor/bootstrap/js/bootstrap.min.js"></script>
+
+<script>
+const SERVER_URL = 'https://casino-aqua.onrender.com'; // <-- Renderin URL tähän
+
+const authModal = document.getElementById('authModal');
+document.getElementById('loginRegisterBtn').addEventListener('click', () => authModal.style.display = 'block');
+document.getElementById('closeAuthModal').addEventListener('click', () => authModal.style.display = 'none');
+const message = document.getElementById('message');
+
+function checkUser(user){
+  const profileName = document.getElementById('profileName');
+  const profileText = document.getElementById('profileText');
+  const userStatus = document.getElementById('userStatus');
+  if(user){
+    profileName.innerText = user.username;
+    profileText.innerText = `Balance: ${user.balance}€`;
+    userStatus.innerText = 'Online';
+  } else {
+    profileName.innerText = 'Guest';
+    profileText.innerText = 'You haven\'t gone live yet. Go Live by clicking the button below.';
+    userStatus.innerText = 'Offline';
+  }
+}
+
+// Rekisteröinti
+document.getElementById('registerBtn').addEventListener('click', async () => {
+    const username = document.getElementById('usernameInput').value.trim();
+    const password = document.getElementById('passwordInput').value.trim();
+    if(!username || !password) return alert('Fill both fields');
+
+    const res = await fetch(`${SERVER_URL}/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+    });
+
+    const data = await res.json();
+    message.innerText = data.message;
+    if(data.success) checkUser(data.user);
+});
+
+// Login
+document.getElementById('loginBtn').addEventListener('click', async () => {
+    const username = document.getElementById('usernameInput').value.trim();
+    const password = document.getElementById('passwordInput').value.trim();
+    if(!username || !password) return alert('Fill both fields');
+
+    const res = await fetch(`${SERVER_URL}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+    });
+
+    const data = await res.json();
+    message.innerText = data.message;
+    if(data.success) checkUser(data.user);
+});
+</script>
+
+</body>
+</html>
