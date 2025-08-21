@@ -1,26 +1,63 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-<title>Cyborg - Login Example</title>
+<title>Cyborg - Profile with Auth</title>
 <link href="vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/fontawesome.css">
 <link rel="stylesheet" href="assets/css/templatemo-cyborg-gaming.css">
+<link rel="stylesheet" href="assets/css/owl.css">
+<link rel="stylesheet" href="assets/css/animate.css">
+<link rel="stylesheet" href="https://unpkg.com/swiper@7/swiper-bundle.min.css"/>
+<style>
+  /* pieni profiilikuva navissa */
+  .nav-profile-img {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-left: 8px;
+  }
+  /* lista alemmas */
+  .main-profile ul {
+    margin-top: 150px;
+  }
+  /* profiilikuva pienemmäks */
+  .main-profile img.profile-pic {
+    width: 250px;
+    height: auto;
+    border-radius: 15px;
+    margin-top: 150px;
+  }
+</style>
 </head>
-
 <body>
 
+<!-- ***** Header Area ***** -->
 <header class="header-area header-sticky">
   <div class="container">
-    <nav class="main-nav">
-      <a href="index.html" class="logo"><img src="assets/images/logo.png" alt=""></a>
-      <ul class="nav">
-        <li><a href="#" id="loginRegisterBtn">Login / Register</a></li>
-      </ul>
-    </nav>
+    <div class="row">
+      <div class="col-12">
+        <nav class="main-nav">
+          <a href="index.html" class="logo"><img src="assets/images/casinologo.png" alt=""></a>
+          <ul class="nav">
+            <li><a href="index.html">Home</a></li>
+            <li><a href="browse.html">Browse</a></li>
+            <li><a href="details.html">Details</a></li>
+            <li><a href="streams.html">Streams</a></li>
+            <!-- Profiili avatarilla oikeessa reunassa -->
+            <li>
+              <a href="profile.html" class="active">Profile 
+                <img src="assets/images/profile-header.jpg" alt="" class="nav-profile-img">
+              </a>
+            </li>
+          </ul>   
+          <a class='menu-trigger'><span>Menu</span></a>
+        </nav>
+      </div>
+    </div>
   </div>
 </header>
 
@@ -38,20 +75,34 @@
   </div>
 </div>
 
-<div class="container" id="profileContent">
+<!-- ***** Profile Content ***** -->
+<div class="container">
   <div class="row">
     <div class="col-lg-12">
       <div class="main-profile">
         <div class="row">
-          <div class="col-lg-4">
-            <img src="assets/images/profile.jpg" alt="" style="border-radius: 23px;">
+          <div class="col-lg-4 text-center">
+            <!-- pienennetty profiilikuva -->
+            <img src="assets/images/profile.jpg" alt="" class="profile-pic">
           </div>
           <div class="col-lg-4 align-self-center">
             <div class="main-info header-text">
               <span id="userStatus">Offline</span>
               <h4 id="profileName">Guest</h4>
-              <p id="profileText">You haven't gone live yet. Go Live by clicking the button below.</p>
+              <p id="profileText">You haven't logged in yet. Please login by clicking the button below.</p>
+              <div class="main-border-button">
+                <!-- live stream -> login nappi -->
+                <a href="#" id="loginRegisterBtnContent">Login / Register</a>
+              </div>
             </div>
+          </div>
+          <div class="col-lg-4 align-self-center">
+            <ul>
+              <li>Balance <span id="profileBalance">0</span></li>
+              <li>Highest Balance <span>12</span></li>
+              <li>Best Win <span id="liveStreams">None</span></li>
+              <li>Total Bets <span>25</span></li>
+            </ul>
           </div>
         </div>
       </div>
@@ -63,39 +114,46 @@
   <div class="container">
     <div class="row">
       <div class="col-lg-12">
-        <p>Copyright © 2036 <a href="#">Cyborg Gaming</a></p>
+        <p>Copyright © 2036 <a href="#">Cyborg Gaming</a> Company. All rights reserved. 
+        <br>Design: <a href="https://templatemo.com" target="_blank" title="free CSS templates">TemplateMo</a></p>
       </div>
     </div>
   </div>
 </footer>
 
+<!-- Scripts -->
 <script src="vendor/jquery/jquery.min.js"></script>
 <script src="vendor/bootstrap/js/bootstrap.min.js"></script>
-
 <script>
-const SERVER_URL = 'https://casino-aqua.onrender.com'; // <-- Renderin URL tähän
+const SERVER_URL = 'https://casinoaqua-server.onrender.com';
 
 const authModal = document.getElementById('authModal');
-document.getElementById('loginRegisterBtn').addEventListener('click', () => authModal.style.display = 'block');
-document.getElementById('closeAuthModal').addEventListener('click', () => authModal.style.display = 'none');
 const message = document.getElementById('message');
 
+// avaa login ikkuna navista ja sivun napista
+document.querySelectorAll('#loginRegisterBtn, #loginRegisterBtnContent').forEach(btn => {
+  if(btn) btn.addEventListener('click', (e) => { e.preventDefault(); authModal.style.display = 'block'; });
+});
+document.getElementById('closeAuthModal').addEventListener('click', () => authModal.style.display = 'none');
+
 function checkUser(user){
-  const profileName = document.getElementById('profileName');
-  const profileText = document.getElementById('profileText');
-  const userStatus = document.getElementById('userStatus');
-  if(user){
-    profileName.innerText = user.username;
-    profileText.innerText = `Balance: ${user.balance}€`;
-    userStatus.innerText = 'Online';
-  } else {
-    profileName.innerText = 'Guest';
-    profileText.innerText = 'You haven\'t gone live yet. Go Live by clicking the button below.';
-    userStatus.innerText = 'Offline';
+  document.getElementById('profileName').innerText = user ? user.username : 'Guest';
+  document.getElementById('profileText').innerText = user ? `Balance: ${user.balance}€` : "You haven't logged in yet. Please login by clicking the button below.";
+  document.getElementById('userStatus').innerText = user ? 'Online' : 'Offline';
+  document.getElementById('liveStreams').innerText = user ? user.liveStreams || 'None' : 'None';
+  document.getElementById('loginRegisterBtnContent').innerText = user ? 'Go Live' : 'Login / Register';
+  if(user && typeof user.balance === 'number'){
+    const b = document.getElementById('profileBalance');
+    if (b) b.innerText = user.balance;
+  }
+  // korvaa navissa "Profile + kuva" käyttäjän nimellä
+  const navProfile = document.querySelector('ul.nav li a[href="profile.html"]');
+  if(user && navProfile){
+    navProfile.textContent = user.username;
   }
 }
 
-// Rekisteröinti
+// Register
 document.getElementById('registerBtn').addEventListener('click', async () => {
     const username = document.getElementById('usernameInput').value.trim();
     const password = document.getElementById('passwordInput').value.trim();
@@ -106,10 +164,13 @@ document.getElementById('registerBtn').addEventListener('click', async () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
     });
-
     const data = await res.json();
     message.innerText = data.message;
-    if(data.success) checkUser(data.user);
+    if(data.success){
+      localStorage.setItem('token', data.token); // 🔑 talteen
+      checkUser(data.user);
+      authModal.style.display = 'none';
+    }
 });
 
 // Login
@@ -123,11 +184,25 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
     });
-
     const data = await res.json();
     message.innerText = data.message;
-    if(data.success) checkUser(data.user);
+    if(data.success){
+      localStorage.setItem('token', data.token); // 🔑 talteen
+      checkUser(data.user);
+      authModal.style.display = 'none';
+    }
 });
+
+// Auto load /me kun sivu aukeaa
+(async function loadUser(){
+  const token = localStorage.getItem('token');
+  if(!token) return;
+  try{
+    const res = await fetch(`${SERVER_URL}/me`, { headers: { 'Authorization': `Bearer ${token}` }});
+    const data = await res.json();
+    if(data.success) checkUser(data.user);
+  }catch(e){}
+})();
 </script>
 
 </body>

@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Roulette</title>
+<style>
+  :root{
+    --felt:#0b1f1b;
+    --felt-2:#0f2c25;
+    --gold:#e8c86c;
+    --red:#c0392b;
+    --black:#151515;
+    --green:#138a3a;
+    --shadow:0 14px 40px rgba(0,0,0,.50);
+  }
+  html,body{height:100%;background:radial-gradient(1200px 750px at 50% -200px,#173d33 0%,#0b1f1b 55%,#081813 100%); font-family: Inter, system-ui, Arial, sans-serif; color:#eee; margin:0}
+  .app{max-width:1220px;margin:0 auto;padding:22px 20px 40px;}
+  h1{letter-spacing:.08em;margin:0 0 14px;font-weight:900;color:var(--gold);text-shadow:0 2px 8px rgba(0,0,0,.35); display:flex; align-items:center; gap:10px}
+  h1:before{content:"🎰"}
+
+  .topbar{display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+  .stat{background:linear-gradient(180deg,#122e26,#0b201a);border:1px solid #1c3e34;border-radius:12px;padding:10px 14px;box-shadow:var(--shadow)}
+  .stat b{color:var(--gold)}
+
+  .layout{display:grid;grid-template-columns: 560px 1fr; gap:24px}
+  @media (max-width: 1000px){ .layout{grid-template-columns:1fr;}}
+
+  .wheel-wrap{position:relative; display:flex; align-items:center; justify-content:center; padding:16px; background:linear-gradient(180deg,#102b24,#0b201a); border:1px solid #1c3e34; border-radius:16px; box-shadow:var(--shadow)}
+  .wheel-stage{position:relative; width:540px; height:540px;}
+  .arrow{position:absolute; left:50%; top:-18px; width:0; height:0; transform:translateX(-50%);
+    border-left:16px solid transparent; border-right:16px solid transparent; border-top:28px solid var(--gold);
+    filter:drop-shadow(0 6px 10px rgba(0,0,0,.5)); z-index:5;}
+
+  svg#wheelSvg{width:100%; height:100%; display:block; filter: drop-shadow(0 24px 45px rgba(0,0,0,.55));}
+  #disc{transition: transform 5.2s cubic-bezier(.17,.9,.15,1); transform-origin: 270px 270px;}
+  .wedge.red{fill:#b73329}
+  .wedge.black{fill:#141414}
+  .wedge.green{fill:#178c44}
+  .num{font:700 13px/1 Inter,system-ui,Arial; fill:#f0f0f0; text-anchor:middle; dominant-baseline:middle;}
+  .num.green{fill:#b8f0c8}
+  .num.red{fill:#ffe0dc}
+
+  .panel{background:linear-gradient(180deg,#102b24,#0b201a); border:1px solid #1d3a31; border-radius:16px; padding:16px; box-shadow:var(--shadow)}
+  .controls{display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap}
+  .btn{cursor:pointer; border:none; padding:12px 18px; border-radius:12px; font-weight:800; letter-spacing:.04em; background:linear-gradient(180deg, #f3d588, #e0b64c); color:#1a1200; box-shadow:0 10px 26px rgba(0,0,0,.45);} 
+  .btn.secondary{background:linear-gradient(180deg,#203c34,#122821); color:#e7e7e7; border:1px solid #305248}
+  .btn:disabled{opacity:0.4; cursor:not-allowed;} /* transparent effect when disabled */
+
+  .customBet{padding:8px; border-radius:8px; border:1px solid #305248; width:100px; background:#0f2c25; color:#fff; font-size:14px;}
+
+  .color-bets{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:12px}
+  .cell{position:relative; background:#13372f; color:#eee; border:1px solid #285448; border-radius:12px; padding:10px; text-align:center; cursor:pointer; transition:.15s transform,.15s background}
+  .cell:hover{transform:translateY(-2px)}
+  .cell.red{background:#5a1813}
+  .cell.black{background:#101010}
+  .cell.green{background:#0f4d2a}
+  .cell .n{font-size:18px; font-weight:900}
+  .cell .bet{position:absolute; right:6px; bottom:6px; background:#0008; padding:2px 8px; border-radius:8px; font-size:12px}
+
+  .numbers-grid{display:grid; grid-template-columns: repeat(12,minmax(40px,1fr)); gap:6px; margin-top:14px}
+  .numbers-grid .num{position:relative; aspect-ratio:1/1; border-radius:10px; display:grid; place-items:center; font-weight:800; cursor:pointer; border:1px solid #2c2c2c; box-shadow:inset 0 -12px 20px rgba(255,255,255,.03)}
+  .numbers-grid .num.red{background:#a93226}
+  .numbers-grid .num.black{background:#1b1b1b}
+  .numbers-grid .num.green{background:#0b7a3b}
+  .numbers-grid .num .bet{position:absolute; right:6px; bottom:6px; font-size:12px; background:#0009; border-radius:8px; padding:2px 6px}
+
+  .history{margin-top:24px; display:flex; gap:8px; flex-wrap:wrap}
+  .chip-mini{font-size:12px; padding:6px 8px; border-radius:999px; background:#1a1a1a; border:1px solid #333}
+  .chip-mini.red{background:#651f1a}
+  .chip-mini.black{background:#0f0f0f}
+  .chip-mini.green{background:#0f4d2a}
+
+  .footer{opacity:.75; margin-top:16px; font-size:12px}
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>Roulette</h1>
+  <div class="topbar">
+    <div class="stat">Balance: <b id="balance">$1000</b></div>
+    <div class="stat">Current Bet: <b id="currentBet">$0</b></div>
+    <div class="stat">Last Result: <b id="lastResult">—</b></div>
+  </div>
+
+  <div class="layout">
+    <div class="wheel-wrap">
+      <div class="wheel-stage">
+        <div class="arrow"></div>
+        <svg id="wheelSvg" viewBox="0 0 540 540">
+          <circle cx="270" cy="270" r="260" fill="#1e1e1e"/>
+          <circle cx="270" cy="270" r="248" fill="#0c0c0c"/>
+          <g id="disc"><g id="wedges"></g><g id="numbersLayer"></g></g>
+          <circle cx="270" cy="270" r="82" fill="#22332c"/>
+          <circle cx="270" cy="270" r="18" fill="#e9c46a"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="controls">
+        <input type="number" id="betInput" class="customBet" value="10" min="1">
+        <div style="display:flex; gap:10px; align-items:center">
+          <button class="btn" id="spinBtn">SPIN</button>
+          <button class="btn secondary" id="clearBtn">Clear Bets</button>
+          <button class="btn secondary" id="resetBtn">Reset $1000</button>
+        </div>
+      </div>
+
+      <div class="color-bets">
+        <div class="cell red" data-color="red"><div class="n">RED</div><div class="bet" hidden>$0</div></div>
+        <div class="cell black" data-color="black"><div class="n">BLACK</div><div class="bet" hidden>$0</div></div>
+        <div class="cell green" data-color="green"><div class="n">GREEN</div><div class="bet" hidden>$0</div></div>
+      </div>
+
+      <div class="numbers-grid" id="numbersGrid"></div>
+
+      <div class="history" id="history"></div>
+      <div class="footer">Straight = 36x • Red/Black = 2x • Green = 14x</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const SERVER_URL = 'https://casino-aqua.onrender.com';
+
+  const sequenceUS=['0','28','9','26','30','11','7','20','32','17','5','22','34','15','3','24','36','13','1','00','27','10','25','29','12','8','19','31','18','6','21','33','16','4','23','35','14','2'];
+  const pocketAngle=360/sequenceUS.length;
+  const redSet=new Set(['1','3','5','7','9','12','14','16','18','19','21','23','25','27','30','32','34','36']);
+  const colorOf=n=>(n==='0'||n==='00')?'green':(redSet.has(n)?'red':'black');
+
+  const disc=document.getElementById('disc'),wedgesLayer=document.getElementById('wedges'),numbersLayer=document.getElementById('numbersLayer'),numbersGrid=document.getElementById('numbersGrid');
+  const balanceEl=document.getElementById('balance'),currentBetEl=document.getElementById('currentBet'),lastResultEl=document.getElementById('lastResult'),historyEl=document.getElementById('history');
+  const betInput=document.getElementById('betInput'),clearBtn=document.getElementById('clearBtn'),resetBtn=document.getElementById('resetBtn'),spinBtn=document.getElementById('spinBtn');
+
+  // 🔑 saldo luetaan backendistä
+  let balance=0,bets=[],currentRotation=0,spinning=false;
+
+  const fmt=v=>`$${v.toLocaleString()}`;
+  const updateStats=()=>{balanceEl.textContent=fmt(balance);currentBetEl.textContent=fmt(bets.reduce((s,b)=>s+b.amount,0));};
+
+  async function loadUserAndBalance(){
+    try{
+      const token = localStorage.getItem('token');
+      if(!token) { updateStats(); return; }
+      const res = await fetch(`${SERVER_URL}/me`, { headers: { 'Authorization': `Bearer ${token}` }});
+      const data = await res.json();
+      if(data && data.success){
+        balance = Number(data.user.balance)||0;
+        // vaihda navissa nimi jos olemassa (tällä sivulla ei ole sitä samaa headeria, mutta jos olisi)
+        updateStats();
+      }
+    }catch(e){}
+  }
+
+  async function saveBalance(){
+    try{
+      const token = localStorage.getItem('token');
+      if(!token) return;
+      await fetch(`${SERVER_URL}/update-balance`, {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${token}` },
+        body: JSON.stringify({ balance })
+      });
+    }catch(e){}
+  }
+
+  function wedgePath(r1,r0,a0,a1){const rad=Math.PI/180,cx=270,cy=270;const x1=cx+r1*Math.cos(a0*rad),y1=cy+r1*Math.sin(a0*rad);const x2=cx+r1*Math.cos(a1*rad),y2=cy+r1*Math.sin(a1*rad);const x3=cx+r0*Math.cos(a1*rad),y3=cy+r0*Math.sin(a1*rad);const x4=cx+r0*Math.cos(a0*rad),y4=cy+r0*Math.sin(a0*rad);const large=(a1-a0)>180?1:0;return`M ${x1} ${y1} A ${r1} ${r1} 0 ${large} 1 ${x2} ${y2} L ${x3} ${y3} A ${r0} ${r0} 0 ${large} 0 ${x4} ${y4} Z`; }
+
+  function buildWheel(){wedgesLayer.innerHTML='';numbersLayer.innerHTML='';let start=-90;sequenceUS.forEach((n,i)=>{const a0=start+i*pocketAngle,a1=a0+pocketAngle,mid=(a0+a1)/2;const wedge=document.createElementNS('http://www.w3.org/2000/svg','path');wedge.setAttribute('d',wedgePath(250,200,a0,a1));wedge.setAttribute('class',`wedge ${colorOf(n)}`);wedgesLayer.appendChild(wedge);const txt=document.createElementNS('http://www.w3.org/2000/svg','text');txt.setAttribute('x',270+226*Math.cos(mid*Math.PI/180));txt.setAttribute('y',270+226*Math.sin(mid*Math.PI/180));txt.setAttribute('transform',`rotate(${mid+90} ${270+226*Math.cos(mid*Math.PI/180)} ${270+226*Math.sin(mid*Math.PI/180)})`);txt.setAttribute('class',`num ${colorOf(n)}`);txt.textContent=n;numbersLayer.appendChild(txt);});}
+
+  function buildNumbersGrid(){for(let n=1;n<=36;n++)addNum(n);addNum('0');addNum('00');}
+  function addNum(n){const el=document.createElement('div');el.className=`num ${colorOf(String(n))}`;el.textContent=n;const badge=document.createElement('div');badge.className='bet';badge.hidden=true;badge.textContent='$0';el.appendChild(badge);el.dataset.number=String(n);el.addEventListener('click',()=>{if(spinning)return;placeBet({type:'number',value:String(n),badge});});numbersGrid.appendChild(el);}
+
+  function placeBet(ref){
+    if(spinning)return;
+    const amount=parseInt(betInput.value)||0;
+    if(amount<=0||balance<amount)return;
+    balance-=amount;
+    let b=bets.find(x=>x.type===ref.type&&x.value===ref.value);
+    if(!b){b={...ref,amount:0};bets.push(b);}
+    b.amount+=amount;
+    if(b.badge){b.badge.hidden=false;b.badge.textContent=fmt(b.amount);}
+    updateStats();
+  }
+
+  document.querySelectorAll('.cell[data-color]').forEach(el=>{const badge=el.querySelector('.bet');el.addEventListener('click',()=>{if(spinning)return;placeBet({type:'color',value:el.dataset.color,badge});});});
+  clearBtn.addEventListener('click',async()=>{if(spinning)return;balance+=bets.reduce((s,b)=>s+b.amount,0);bets=[];document.querySelectorAll('.bet').forEach(b=>{b.hidden=true;b.textContent='$0';});updateStats();await saveBalance();});
+  resetBtn.addEventListener('click',async()=>{if(spinning)return;balance=1000;bets=[];document.querySelectorAll('.bet').forEach(b=>{b.hidden=true;b.textContent='$0';});updateStats();lastResultEl.textContent='—';historyEl.innerHTML='';await saveBalance();});
+
+  function mod(n,m){return((n%m)+m)%m;}
+
+  spinBtn.addEventListener('click',async()=>{if(spinning||bets.length===0)return;spinning=true;clearBtn.disabled=true;resetBtn.disabled=true;spinBtn.disabled=true;
+    const idx=Math.floor(Math.random()*sequenceUS.length);const winning=sequenceUS[idx],winColor=colorOf(winning);const baseMid=-90+idx*pocketAngle+pocketAngle/2;const delta=mod((-90-(baseMid+currentRotation)),360);currentRotation+=delta+6*360;disc.style.transform=`rotate(${currentRotation}deg)`;await new Promise(r=>setTimeout(r,5250));
+    let winnings=0;for(const b of bets){
+      if(b.type==='number'&&b.value===String(winning)){winnings+=b.amount*36;} // straight number
+      if(b.type==='color'&&b.value===winColor){
+        if(winColor==='green'){winnings+=b.amount*14;} // green special payout
+        else{winnings+=b.amount*2;} // red/black normal
+      }}
+    if(winnings>0)balance+=winnings;bets=[];document.querySelectorAll('.bet').forEach(b=>{b.hidden=true;b.textContent='$0';});updateStats();
+    lastResultEl.innerHTML=`<span style="color:${winColor==='red'?'#ff8f83':winColor==='black'?'#ddd':'#9ee5b4'}">${winning}</span> (${winColor.toUpperCase()})`;const tag=document.createElement('span');tag.className=`chip-mini ${winColor}`;tag.textContent=`${winning} ${winColor.toUpperCase()}`;historyEl.prepend(tag);
+    await saveBalance(); // 🔑 tallenna peli jälkeen
+    spinning=false;clearBtn.disabled=false;resetBtn.disabled=false;spinBtn.disabled=false;});
+
+  buildWheel();buildNumbersGrid();
+  loadUserAndBalance(); // 🔑 hae backendistä
+  updateStats();
+})();
+</script>
+</body>
+</html>
