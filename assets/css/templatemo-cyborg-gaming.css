@@ -142,12 +142,12 @@ p {
 }
 
 ::selection {
-  background: #e75e8d;
+  background: #4da6ff;
   color: #fff;
 }
 
 ::-moz-selection {
-  background: #e75e8d;
+  background: #4da6ff;
   color: #fff;
 }
 
@@ -159,7 +159,7 @@ p {
 .main-button a {
   font-size: 14px;
   color: #fff;
-  background-color: #e75e8d;
+  background-color: #4da6ff;
   padding: 12px 30px;
   display: inline-block;
   border-radius: 25px;
@@ -173,14 +173,14 @@ p {
 
 .main-button a:hover {
   background-color: #fff;
-  color: #e75e8d;
+  color: #4da6ff;
 }
 
 .main-border-button a {
   font-size: 14px;
-  color: #ec6090;
+  color: #4da6ff;
   background-color: transparent;
-  border: 1px solid #ec6090;
+  border: 1px solid #4da6ff;
   padding: 12px 30px;
   display: inline-block;
   border-radius: 25px;
@@ -195,7 +195,7 @@ p {
 .main-border-button a:hover {
   border-color: #fff;
   background-color: #fff;
-  color: #e75e8d;
+  color: #4da6ff;
 }
 
 .border-no-active a {
@@ -214,7 +214,7 @@ section {
 }
 
 .heading-section h4 {
-  color: #ec6090;
+  color: #4da6ff;
   font-size: 34px;
   text-decoration: none;
   margin-bottom: 30px;
@@ -299,7 +299,7 @@ Pre-loader Style
   height: 16px;
   top: 12px;
   left: 15px;
-  background: #e75e8d;
+  background: #4da6ff;
   border-radius: 50%;
   -webkit-transform: translateX(0);
   transform: translateX(0);
@@ -322,7 +322,7 @@ Pre-loader Style
   width: 16px;
   height: 16px;
   margin-left: 16px;
-  background: #e75e8d;
+  background: #4da6ff;
   border-radius: 50%;
 }
 
@@ -479,13 +479,13 @@ Header Style
 
 .header-area .main-nav .nav li:hover a,
 .header-area .main-nav .nav li a.active {
-  color: #e75e8d !important;
+  color: #4da6ff !important;
 }
 
 .header-area .main-nav .nav li:last-child:hover a,
 .header-area .main-nav .nav li:last-child a.active {
   color: #fff !important;
-  background-color: #e75e8d !important;
+  background-color: #4da6ff !important;
 }
 
 .background-header .main-nav .nav li:hover a,
@@ -523,7 +523,7 @@ Header Style
   -o-transition: all 0.4s;
   -webkit-transition: all 0.4s;
   transition: all 0.4s;
-  background-color: #e75e8d;
+  background-color: #4da6ff;
   display: block;
   position: absolute;
   width: 30px;
@@ -534,7 +534,7 @@ Header Style
 .background-header .main-nav .menu-trigger span,
 .background-header .main-nav .menu-trigger span:before,
 .background-header .main-nav .menu-trigger span:after {
-  background-color: #e75e8d;
+  background-color: #4da6ff;
 }
 
 .header-area .main-nav .menu-trigger span:before,
@@ -543,7 +543,7 @@ Header Style
   -o-transition: all 0.4s;
   -webkit-transition: all 0.4s;
   transition: all 0.4s;
-  background-color: #e75e8d;
+  background-color: #4da6ff;
   display: block;
   position: absolute;
   width: 30px;
@@ -554,7 +554,7 @@ Header Style
 
 .background-header .main-nav .menu-trigger span:before,
 .background-header .main-nav .menu-trigger span:after {
-  background-color: #e75e8d;
+  background-color: #4da6ff;
 }
 
 .header-area .main-nav .menu-trigger span:before,
@@ -595,11 +595,11 @@ Header Style
   -ms-transform: translateY(6px) translateX(1px) rotate(45deg);
   -webkit-transform: translateY(6px) translateX(1px) rotate(45deg);
   transform: translateY(6px) translateX(1px) rotate(45deg);
-  background-color: #e75e8d;
+  background-color: #4da6ff;
 }
 
 .background-header .main-nav .menu-trigger.active span:before {
-  background-color: #e75e8d;
+  background-color: #4da6ff;
 }
 
 .header-area .main-nav .menu-trigger.active span:after {
@@ -607,11 +607,11 @@ Header Style
   -ms-transform: translateY(-6px) translateX(1px) rotate(-45deg);
   -webkit-transform: translateY(-6px) translateX(1px) rotate(-45deg);
   transform: translateY(-6px) translateX(1px) rotate(-45deg);
-  background-color: #e75e8d;
+  background-color: #4da6ff;
 }
 
 .background-header .main-nav .menu-trigger.active span:after {
-  background-color: #e75e8d;
+  background-color: #4da6ff;
 }
 
 .header-area.header-sticky {
@@ -662,7 +662,7 @@ Header Style
   }
   .header-area.header-sticky .nav li a:hover,
   .header-area.header-sticky .nav li a.active {
-    color: #e75e8d!important;
+    color: #4da6ff!important;
     opacity: 1;
   }
   .header-area.header-sticky .nav li.search-icon a {
@@ -724,13 +724,13 @@ Header Style
   }
   .header-area .main-nav .nav li a:hover {
     background: #fff !important;
-    color: #e75e8d!important;
+    color: #4da6ff!important;
   }
   .header-area .main-nav .nav li:last-child a img {
     display: none;
   }
   .header-area .main-nav .nav li:last-child a:hover {
-    color: #ec6090 !important;
+    color: #4da6ff !important;
     background-color: transparent !important;
   }
   .header-area .main-nav .nav li.has-sub ul.sub-menu {
@@ -796,7 +796,7 @@ Banner Style
 
 .main-banner h4 em {
   font-style: normal;
-  color: #ec6090;
+  color: #4da6ff;
 }
 
 /* 
@@ -860,7 +860,7 @@ Most Popular Style
 }
 
 .most-popular .item ul li:last-child i {
-  color: #ec6090;
+  color: #4da6ff;
 }
 
 .most-popular .main-button {
@@ -953,7 +953,7 @@ footer p a {
 }
 
 footer p a:hover {
-  color: #ec6090;
+  color: #4da6ff;
 }
 
 /* 
@@ -992,7 +992,7 @@ Featured Games Style
 .featured-games .item .thumb .hover-effect h6 {
   background-color: rgba(31,33,34,0.95);
   display: inline-block;
-  color: #ec6090;
+  color: #4da6ff;
   font-weight: 600;
   font-size: 14px;
   padding: 10px 20px;
@@ -1063,7 +1063,7 @@ Featured Games Style
 .featured-games .owl-nav .owl-prev span:hover,
 .featured-games .owl-nav .owl-next span:hover {
   opacity: 1;
-  color: #ec6090;
+  color: #4da6ff;
 }
 
 .top-downloaded {
@@ -1113,7 +1113,7 @@ Featured Games Style
   height: 46px;
   text-align: center;
   line-height: 46px;
-  color: #ec6090;
+  color: #4da6ff;
   background-color: #27292a;
   border-radius: 50%;
 }
@@ -1130,7 +1130,7 @@ Featured Games Style
 
 .top-downloaded .text-button a {
   font-weight: 600;
-  color: #ec6090;
+  color: #4da6ff;
   font-size: 15px;
 }
 
@@ -1239,7 +1239,7 @@ Live Stream Style
 
 .live-stream span i {
   color: #fff;
-  background-color: #ec6090;
+  background-color: #4da6ff;
   border-radius: 50%;
   font-size: 12px;
   width: 20px;
@@ -1252,7 +1252,7 @@ Live Stream Style
 
 .live-stream span {
   font-size: 14px;
-  color: #ec6090;
+  color: #4da6ff;
 }
 
 .live-stream .down-content h4 {
@@ -1292,7 +1292,7 @@ Featured Banner Style
   display: inline-block;
   text-align: center;
   line-height: 46px;
-  color: #ec6090;
+  color: #4da6ff;
 }
 
 /* 
@@ -1352,7 +1352,7 @@ Game Details Style
 }
 
 .game-details .content .left-info ul li:last-child i {
-  color: #ec6090;
+  color: #4da6ff;
 }
 
 .game-details .content .right-info {
@@ -1380,7 +1380,7 @@ Game Details Style
 } 
 
 .game-details .content .right-info ul li i {
-  color: #ec6090;
+  color: #4da6ff;
 }
 
 .game-details .main-border-button {
@@ -1447,7 +1447,7 @@ Other Related Style
 }
 
 .other-games ul li:last-child i {
-  color: #ec6090;
+  color: #4da6ff;
 }
 
 /* 
@@ -1490,13 +1490,13 @@ Top Streamers Style
 .top-streamers ul li h6 {
   display: inline;
   font-size: 14px;
-  color: #ec6090;
+  color: #4da6ff;
   font-weight: 400;
 }
 
 .top-streamers ul li h6 i {
   color: #fff;
-  background-color: #ec6090;
+  background-color: #4da6ff;
   border-radius: 50%;
   font-size: 12px;
   width: 20px;
@@ -1530,7 +1530,7 @@ Profile Style
 .main-profile .main-info span {
   font-size: 14px;
   color: #fff;
-  background-color: #e75e8d;
+  background-color: #4da6ff;
   padding: 8px 20px;
   display: inline-block;
   border-radius: 25px;
@@ -1566,7 +1566,7 @@ Profile Style
 .main-profile ul li span {
   float: right;
   font-weight: 500;
-  color: #ec6090;
+  color: #4da6ff;
 }
 
 .main-profile ul li:last-child {
@@ -1608,7 +1608,7 @@ Profile Style
     display: inline-block;
     text-align: center;
     line-height: 46px;
-    color: #ec6090;
+    color: #4da6ff;
 }
 
 .clips .item h4 {
@@ -1617,7 +1617,7 @@ Profile Style
 }
 
 .clips .item span i {
-  color: #ec6090;
+  color: #4da6ff;
 }
 
 .clips .item span {
@@ -1776,7 +1776,7 @@ body {
 .most-popular .item .main-button a {
   display: inline-block;
   padding: 10px 20px;
-  background: #e83e8c;
+  background: #4da6ff;
   color: #fff;
   border-radius: 25px;
   text-decoration: none;
@@ -1785,5 +1785,29 @@ body {
 }
 
 .most-popular .item .main-button a:hover {
-  background: #ff5fa2;
+  background: #4da6ff;
+}
+
+
+
+
+.item .thumb img {
+  width: 100%;
+  height: 280px;  /* sama korkeus kaikille */
+  object-fit: cover; /* pitää mittasuhteet mutta croppaa */
+  border-radius: 10px; /* jos haluat saman pyöristyksen */
+}
+
+
+
+
+.logo {
+    position: relative; /* tarvitaan, jotta top toimii */
+    top: -60px; /* pienempi luku = vähemmän nousee, suurempi = enemmän nousee */
+}
+
+
+
+.blue-text {
+  color: #4da6ff !important;
 }

@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Blackjack – Realistic Table (No Chips)</title>
+  <style>
+    /* ... (tyylit samat kuin alkuperäisessä blackjack.html:ssa) ... */
+  </style>
+</head>
+<body>
+<div class="table-wrap">
+  <div class="table">
+    <div class="layout">
+      <div class="title">PREMIER BLACKJACK</div>
+      <div class="ring"></div>
+
+      <div class="hud">
+        <div class="bank">Balance: <strong id="balance">$0</strong></div>
+        <div class="bank">Bet: <strong id="bet">$0</strong></div>
+      </div>
+
+      <div class="controls">
+        <button id="newshoe" class="btn secondary" title="Shuffle a fresh 52-card deck">Shuffle Deck</button>
+      </div>
+
+      <div class="hand-area">
+        <div class="lane" id="playerLane">
+          <div class="lane-label">PLAYER</div>
+          <div class="lane-total" id="playerTotal">0</div>
+        </div>
+        <div class="lane" id="dealerLane">
+          <div class="lane-label">DEALER</div>
+          <div class="lane-total" id="dealerTotal">0</div>
+        </div>
+      </div>
+
+      <div class="betting">
+        <label for="betInput">Bet</label>
+        <input id="betInput" type="number" min="1" step="1" placeholder="100" />
+        <button id="placeBet" class="btn">Place Bet</button>
+        <button id="clearBet" class="btn secondary">Clear</button>
+      </div>
+
+      <div class="actions">
+        <button id="deal" class="btn">Deal</button>
+        <button id="hit" class="btn secondary" disabled>Hit</button>
+        <button id="stand" class="btn secondary" disabled>Stand</button>
+        <button id="double" class="btn secondary" disabled>Double</button>
+      </div>
+
+      <div class="banner" id="banner"></div>
+      <div class="toast" id="toast">Type a bet and place it. Shuffle anytime for a fresh 52-card deck. Blackjack pays 3:2.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SERVER_URL = "https://casinoaqua-server.onrender.com";
+const SERVER_URL = "https://casinoaqua-server.onrender.com";
+const $ = (sel, root=document) => root.querySelector(sel);
+const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+
+const state = {
+  balance: 0,
+  currentBet: 0,
+  deck: [],
+  handInProgress: false,
+  dealerHole: null,
+  player: [],
+  dealer: [],
+  doubled: false,
+  canDouble: false,
+};
+
+const ranks = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+const suits = ['♠','♥','♦','♣'];
+
+async function loadUserAndBalance(){
+  try{
+    const token = localStorage.getItem("token");
+    if(!token) return;
+    const res = await fetch(`${SERVER_URL}/me`, {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if(data && data.success){
+      state.balance = Number(data.user.balance)||0;
+      updateHUD();
+    }
+  }catch(e){}
+}
+async function saveBalance(){
+  try{
+    const token = localStorage.getItem("token");
+    if(!token) return;
+    await fetch(`${SERVER_URL}/update-balance`, {
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ balance: state.balance })
+    });
+  }catch(e){}
+}
+
+
+
+async function loadUserAndBalance(){
+  try{
+    const token = localStorage.getItem("token");
+    if(!token) return;
+    const res = await fetch(`${SERVER_URL}/me`, {
+      headers: { "Authorization": `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if(data && data.success){
+      state.balance = Number(data.user.balance)||0;
+      updateHUD();
+    }
+  }catch(e){}
+}
+async function saveBalance(){
+  try{
+    const token = localStorage.getItem("token");
+    if(!token) return;
+    await fetch(`${SERVER_URL}/update-balance`, {
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ balance: state.balance })
+    });
+  }catch(e){}
+}
+
+function shuffleDeck(){
+  state.deck = [];
+  for(const s of suits){
+    for(const r of ranks){
+      state.deck.push({r,s});
+    }
+  }
+  for(let i=state.deck.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [state.deck[i], state.deck[j]] = [state.deck[j], state.deck[i]];
+  }
+}
+function updateHUD(){
+  $('#balance').textContent = `$${state.balance.toLocaleString()}`;
+  $('#bet').textContent = `$${state.currentBet.toLocaleString()}`;
+}
+function setLaneTotals(){
+  const p = handTotals(state.player).total;
+  const d = $('#dealerLane .card.back') ? handTotals([state.dealer[0]]).total : handTotals(state.dealer).total;
+  $('#playerTotal').textContent = p;
+  $('#dealerTotal').textContent = d;
+}
+function toast(msg){
+  const t=$('#toast');
+  t.textContent=msg;
+  t.style.opacity=1;
+  clearTimeout(t._timer);
+  t._timer=setTimeout(()=> t.style.opacity=.6, 2200);
+}
+function cardValue(card){
+  if(card.r==='A') return 11;
+  if(['K','Q','J','10'].includes(card.r)) return 10;
+  return parseInt(card.r,10);
+}
+function handTotals(hand){
+  let total=0, aces=0;
+  for(const c of hand){
+    const v=cardValue(c);
+    if(c.r==='A') aces++;
+    total+=v;
+  }
+  while(total>21 && aces>0){ total-=10; aces--; }
+  return { total };
+}
+function isBlackjack(hand){ return hand.length===2 && handTotals(hand).total===21; }
+function draw(){ if(state.deck.length===0) shuffleDeck(); return state.deck.pop(); }
+function clearLane(lane){ $$('.card', lane).forEach(c=>c.remove()); }
+function makeCardEl(card,facedown=false){
+  const el=document.createElement('div');
+  el.className='card deal'+(facedown?' back':'');
+  if(!facedown){
+    const red=(card.s==='♥'||card.s==='♦');
+    el.innerHTML=`<div class="face ${red?'red':'black'}">
+      <div class="corner"><div class="rank">${card.r}</div><div class="pip">${card.s}</div></div>
+      <div class="suit">${card.s}</div>
+      <div class="corner right"><div class="rank">${card.r}</div><div class="pip">${card.s}</div></div>
+    </div>`;
+  }
+  return el;
+}
+function setActions({deal=true,hit=false,stand=false,dbl=false}){
+  $('#deal').disabled=!deal;
+  $('#hit').disabled=!hit;
+  $('#stand').disabled=!stand;
+  $('#double').disabled=!dbl;
+}
+function placeBet(){
+  const v=Math.max(1, Math.floor(parseInt($('#betInput').value||'0',10)));
+  if(v<=0) return toast('Enter a bet amount.');
+  if(state.handInProgress) return toast('Finish the current hand first.');
+  if(state.balance<v) return toast('Insufficient balance.');
+  state.balance-=v;
+  state.currentBet+=v;
+  updateHUD();
+  saveBalance();
+  toast(`Bet $${v.toLocaleString()} placed.`);
+      saveBalance();
+}
+function clearBet(){
+  if(state.handInProgress) return toast('Cannot change bet mid-hand.');
+  state.balance+=state.currentBet;
+  state.currentBet=0;
+  updateHUD();
+  saveBalance();
+  saveBalance();
+}
+async function deal(){
+  if(state.handInProgress) return;
+  if(state.currentBet<=0) return toast('Place a bet first.');
+  state.handInProgress=true;
+  $('#banner').classList.remove('show');
+  state.player=[]; state.dealer=[];
+  state.doubled=false; state.canDouble=true;
+  clearLane($('#playerLane')); clearLane($('#dealerLane'));
+
+  const p1=draw(); state.player.push(p1); $('#playerLane').appendChild(makeCardEl(p1)); setLaneTotals();
+  await new Promise(r=>setTimeout(r,250));
+  const d1=draw(); state.dealer.push(d1); $('#dealerLane').appendChild(makeCardEl(d1)); setLaneTotals();
+  await new Promise(r=>setTimeout(r,250));
+  const p2=draw(); state.player.push(p2); $('#playerLane').appendChild(makeCardEl(p2)); setLaneTotals();
+  await new Promise(r=>setTimeout(r,250));
+  const d2=draw(); state.dealer.push(d2); const holeEl=makeCardEl(d2,true); $('#dealerLane').appendChild(holeEl); setLaneTotals();
+
+  setActions({deal:false,hit:true,stand:true,dbl:true});
+  const pBJ=isBlackjack(state.player), dBJ=isBlackjack(state.dealer);
+  if(pBJ||dBJ){ await revealDealerHole(); return settle(true); }
+}
+function updateBanner(msg){
+  const b=$('#banner'); b.textContent=msg; b.classList.add('show');
+}
+async function hit(){
+  if(!state.handInProgress) return;
+  const c=draw(); state.player.push(c); $('#playerLane').appendChild(makeCardEl(c)); setLaneTotals();
+  state.canDouble=false; $('#double').disabled=true;
+  const {total}=handTotals(state.player);
+  if(total>=21) await stand();
+}
+async function stand(){
+  if(!state.handInProgress) return;
+  await revealDealerHole();
+  await dealerPlay();
+  return settle(false);
+}
+async function doubleDown(){
+  if(!state.handInProgress||!state.canDouble) return;
+  if(state.balance<state.currentBet) return toast('Not enough balance to double.');
+  state.balance-=state.currentBet;
+  state.currentBet*=2;
+  state.doubled=true;
+  updateHUD();
+      saveBalance();
+  saveBalance();
+  await hit();
+  if(state.handInProgress) await stand();
+}
+async function revealDealerHole(){
+  const hole=$('#dealerLane .card.back');
+  if(!hole){ setLaneTotals(); return; }
+  hole.classList.add('flip-out');
+  await new Promise(r=>setTimeout(r,180));
+  hole.replaceWith(makeCardEl(state.dealer[1],false));
+  const last=$('#dealerLane .card:last-child'); last.classList.add('flip-in');
+  await new Promise(r=>setTimeout(r,200));
+  setLaneTotals();
+}
+async function dealerPlay(){
+  let info=handTotals(state.dealer);
+  while(info.total<17){
+    await new Promise(r=>setTimeout(r,400));
+    const c=draw(); state.dealer.push(c); $('#dealerLane').appendChild(makeCardEl(c));
+    info=handTotals(state.dealer); setLaneTotals();
+    if(info.total===21) break;
+  }
+}
+function settle(fromInitial){
+  const player=handTotals(state.player).total;
+  const dealer=handTotals(state.dealer).total;
+  const pBJ=isBlackjack(state.player), dBJ=isBlackjack(state.dealer);
+  let outcome='', payout=0;
+  if(pBJ&&dBJ){ outcome='Push – both Blackjack'; payout=state.currentBet; }
+  else if(pBJ){ outcome='Blackjack!'; payout=state.currentBet*2.5; }
+  else if(dBJ&&fromInitial){ outcome='Dealer Blackjack'; payout=0; }
+  else if(player>21){ outcome='Player Bust'; payout=0; }
+  else if(dealer>21){ outcome='Dealer Bust – You win'; payout=state.currentBet*2; }
+  else if(player>dealer){ outcome='You win'; payout=state.currentBet*2; }
+  else if(player<dealer){ outcome='Dealer wins'; payout=0; }
+  else { outcome='Push'; payout=state.currentBet; }
+  state.balance+=payout;
+  updateHUD();
+  saveBalance();
+  updateBanner(`${outcome} (P ${player} / D ${dealer})`);
+  saveBalance();
+  state.currentBet=0;
+  setActions({deal:true});
+  state.handInProgress=false;
+  state.canDouble=false;
+  $('#double').disabled=true;
+  setLaneTotals();
+}
+
+function init(){
+  shuffleDeck();
+  updateHUD();
+  setLaneTotals();
+  $('#placeBet').addEventListener('click', placeBet);
+  $('#clearBet').addEventListener('click', clearBet);
+  $('#deal').addEventListener('click', deal);
+  $('#hit').addEventListener('click', hit);
+  $('#stand').addEventListener('click', stand);
+  $('#double').addEventListener('click', doubleDown);
+  $('#newshoe').addEventListener('click', ()=>{ shuffleDeck(); toast('Shuffled a fresh 52-card deck.'); });
+  loadUserAndBalance();
+      loadUserAndBalance();
+}
+init();
+</script>
+</body>
+</html>

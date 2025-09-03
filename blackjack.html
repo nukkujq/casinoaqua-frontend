@@ -1,259 +1,240 @@
-<!doctype html>
-<html lang="fi">
+<!DOCTYPE html>
+<html lang="en">
 <head>
-<meta charset="utf-8" />
-<title>Blackjack</title>
-<style>
-  body { font-family: sans-serif; background: #f3f4f6; text-align: center; padding: 20px; }
-  .topbar { margin-bottom: 20px; }
-  .button { padding: 8px 14px; margin: 5px; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; }
-  .green { background: #4CAF50; color: white; }
-  .red { background: #e74c3c; color: white; }
-  .gray { background: #ccc; }
-  #hand, #dealer-hand { margin: 10px auto; max-width: 400px; display: flex; justify-content: center; gap: 8px; }
-  .card {
-    width: 60px; height: 90px; border-radius: 8px; background: white; border: 2px solid #444;
-    display: flex; flex-direction: column; justify-content: space-between; padding: 5px;
-    font-weight: bold; font-size: 20px; color: #222; box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
-    user-select: none;
-  }
-  .card.red { color: #e74c3c; }
-  #result { font-size: 20px; margin-top: 15px; font-weight: bold; }
-  input[type=number] { width: 80px; font-size: 16px; padding: 6px; border-radius: 5px; border: 1px solid #aaa; text-align: center; }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Blackjack – Realistic Table (No Chips)</title>
+  <style>
+    :root{
+      --felt:#0c5a3a;
+      --gold:#e7c76b;
+      --ivory:#f6f3ea;
+      --shadow:rgba(0,0,0,.35);
+      --wood:#623e24;
+    }
+    html,body{height:100%;}
+    body{
+      margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
+      background: radial-gradient(1200px 700px at 50% 20%, #1b1f24, #07090b 70%);
+      color:#eee; overflow:hidden;
+    }
+    .back-btn {
+      position: fixed;
+      top: 12px;
+      left: 24px;
+      background: #203c34;
+      color: #fff;
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid #305248;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      z-index: 1000;
+    }
+    .back-btn:hover { background: #285448; }
+
+    .table-wrap{ position:relative; width: min(1200px, 96vw); height: min(760px, 92vh); margin: 2vh auto; perspective: 1200px; }
+    .table{ position:absolute; inset:0; border-radius: 48px; box-shadow: 0 40px 120px rgba(0,0,0,.55), inset 0 4px 0 rgba(255,255,255,.06);
+      background: radial-gradient(160% 100% at 50% -10%, #127e50, var(--felt)); transform: rotateX(12deg); overflow:hidden; border: 12px solid var(--wood); outline: 2px solid #2b1b10; outline-offset: -12px; }
+    .table:before{ content:""; position:absolute; inset:-12px; border-radius:56px; pointer-events:none; background:
+      linear-gradient( to bottom, rgba(255,255,255,.12), transparent 30%),
+      radial-gradient(60% 30% at 50% 0%, rgba(255,255,255,.18), transparent 60%); mix-blend-mode: screen; }
+
+    .layout{position:absolute; inset:0;}
+    .title{ position:absolute; top:8%; left:50%; transform:translateX(-50%); font-weight:800; letter-spacing:.3rem; font-size: clamp(18px, 2.6vw, 28px); color: var(--gold); text-shadow: 0 1px 0 #6c5b2c, 0 0 18px rgba(231,199,107,.35);}    
+    .ring{ position:absolute; left:50%; top:40%; width:74%; height:50%; transform: translate(-50%,-50%); border: 3px solid rgba(255,255,255,.08); border-radius: 1100px / 600px; filter: drop-shadow(0 2px 0 rgba(0,0,0,.35)); box-shadow: inset 0 0 0 2px rgba(0,0,0,.25);}    
+
+    .hud{ position:absolute; top:6%; left:3%; display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+    .bank{ padding:10px 14px; background: rgba(0,0,0,.35); border-radius:14px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06);} .bank strong{ color:var(--gold);}    
+
+    .controls{ position:absolute; right:3%; top:6%; display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+    .btn{ padding:10px 14px; border-radius:14px; border:0; cursor:pointer; font-weight:700; background: linear-gradient(to bottom,#2b7a4a,#205c38); color:#fff; box-shadow: 0 6px 20px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.2); transition: transform .06s ease, filter .2s ease;}
+    .btn:hover{ filter:brightness(1.08);} .btn:active{ transform: translateY(1px);} .btn.secondary{ background: linear-gradient(to bottom,#3a3f46,#292e33);} .btn.disabled{ opacity:.5; pointer-events:none;}
+
+    .betting{ position:absolute; bottom:10%; left:50%; transform: translateX(-50%); display:flex; gap:10px; align-items:center; background: rgba(0,0,0,.35); padding:10px 12px; border-radius:14px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.06);}
+    .betting input{ width:120px; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.08); color:#fff; outline:none; font-weight:700;}
+    .betting label{ opacity:.85; margin-right:6px; }
+
+    .hand-area{ position:absolute; left:50%; top:48%; width:84%; transform:translateX(-50%); display:flex; justify-content:space-between; align-items:flex-start; }
+    .lane{ width:48%; min-height:150px; display:flex; gap:18px; align-items:center; padding:8px 0; position:relative; }
+    .lane-label{ position:absolute; top:-34px; left:6px; color:var(--gold); font-weight:800; letter-spacing:.15rem; text-shadow:0 1px 0 #6c5b2c;}
+    .lane-total{ position:absolute; top:-34px; right:6px; font-weight:800; opacity:.9; }
+
+    .card{ width: 92px; height: 132px; border-radius: 14px; background: var(--ivory); box-shadow: 0 14px 40px rgba(0,0,0,.6); position:relative; transform-origin: 50% 120%; transform: rotateX(6deg) translateZ(0); overflow:hidden; border:1px solid #ddd; }
+    .card:before{ content:""; position:absolute; inset:0; background: linear-gradient(110deg, rgba(255,255,255,.65), rgba(255,255,255,0) 28%), linear-gradient( to bottom, rgba(0,0,0,.05), rgba(255,255,255,0) 40%); mix-blend-mode: screen; pointer-events:none; }
+    .card .face{ position:absolute; inset:6px; border-radius:10px; display:grid; grid-template-columns:1fr 1fr; grid-template-rows:auto 1fr auto; }
+    .pip{ font-size: 22px; line-height:1; }
+    .rank{ font-weight:900; font-size: 22px; }
+    .suit{ grid-column: span 2; display:flex; justify-content:center; align-items:center; font-size: 52px; opacity:.9; filter: drop-shadow(0 1px 0 rgba(0,0,0,.2)); }
+    .red{ color:#c62828;} .black{ color:#222;}
+    .corner{ display:flex; gap:4px; align-items:center; }
+    .corner.right{ justify-self:end; transform: rotate(180deg); }
+
+    .back{ background: repeating-linear-gradient(45deg, #b00 0 10px, #d22 10px 20px); position:relative; }
+    .back:after{ content:""; position:absolute; inset:6px; border:2px solid rgba(255,255,255,.7); border-radius:10px; }
+
+    @keyframes dealIn { from { transform: translateY(-160px) rotate(-8deg); opacity:0;} to { transform: translateY(0) rotate(0); opacity:1;} }
+    .card.deal{ animation: dealIn .35s ease both; }
+
+    @keyframes flipOut { from { transform: rotateY(0deg); } to { transform: rotateY(90deg); } }
+    @keyframes flipIn { from { transform: rotateY(-90deg); } to { transform: rotateY(0deg); } }
+    .flip-out{ animation: flipOut .18s ease both; transform-origin:center; }
+    .flip-in{ animation: flipIn .18s ease .18s both; transform-origin:center; }
+
+    .actions{ position:absolute; right:3%; bottom:10%; display:flex; gap:8px; }
+
+    .banner{ position:absolute; left:50%; top:16%; transform: translate(-50%,0); padding:12px 18px; border-radius:20px; font-weight:900; letter-spacing:.15rem; text-transform:uppercase; background: linear-gradient( to bottom, rgba(0,0,0,.65), rgba(0,0,0,.45)); box-shadow: 0 20px 60px rgba(0,0,0,.6), inset 0 0 0 1px rgba(255,255,255,.12); color:var(--gold); text-shadow:0 1px 0 #5c4d26; display:none; }
+    .banner.show{ display:block; }
+    .toast{ position:absolute; bottom: 12px; left: 12px; padding: 8px 12px; background: rgba(0,0,0,.6); border-radius: 10px; font-size: 13px; opacity:.9;}
+
+    @media (max-width: 900px){ .card{ width:78px; height:112px; } .lane{ gap:12px; } }
+  </style>
 </head>
 <body>
-<div class="topbar">
-  <a href="index.html" class="button gray">⬅ Takaisin valikkoon</a>
-  <button onclick="resetSaldo()" class="button red">Nollaa saldo</button>
-</div>
+  <!-- Back button -->
+  <button class="back-btn" onclick="history.back()">← Back</button>
 
-<h2>🃏 Blackjack</h2>
-<p>Saldo: <span id="balance"></span>  Panos: <input id="bet" type="number" min="1" value="10" /></p>
+  <div class="table-wrap">
+    <div class="table">
+      <div class="layout">
+        <div class="title">PREMIER BLACKJACK</div>
+        <div class="ring"></div>
 
-<div>
-  <button onclick="startGame()" class="button green">Aloita</button>
-  <button onclick="hit()" id="hitBtn" class="button gray" disabled>Hit</button>
-  <button onclick="stand()" id="standBtn" class="button gray" disabled>Stand</button>
-</div>
+        <div class="hud">
+          <div class="bank">Balance: <strong id="balance">$0</strong></div>
+          <div class="bank">Bet: <strong id="bet">$0</strong></div>
+        </div>
+        <div class="controls">
+          <button id="newshoe" class="btn secondary" title="Shuffle a fresh 52-card deck">Shuffle Deck</button>
+        </div>
 
-<h3>Dealer:</h3>
-<div id="dealer-hand"></div>
-<p id="dealer-score"></p>
+        <div class="hand-area">
+          <div class="lane" id="playerLane">
+            <div class="lane-label">PLAYER</div>
+            <div class="lane-total" id="playerTotal">0</div>
+          </div>
+          <div class="lane" id="dealerLane">
+            <div class="lane-label">DEALER</div>
+            <div class="lane-total" id="dealerTotal">0</div>
+          </div>
+        </div>
 
-<h3>Sinu:</h3>
-<div id="hand"></div>
-<p id="player-score"></p>
+        <div class="betting">
+          <label for="betInput">Bet</label>
+          <input id="betInput" type="number" min="1" step="1" placeholder="100" />
+          <button id="placeBet" class="btn">Place Bet</button>
+          <button id="clearBet" class="btn secondary">Clear</button>
+        </div>
 
-<p id="result"></p>
+        <div class="actions">
+          <button id="deal" class="btn">Deal</button>
+          <button id="hit" class="btn secondary" disabled>Hit</button>
+          <button id="stand" class="btn secondary" disabled>Stand</button>
+          <button id="double" class="btn secondary" disabled>Double</button>
+        </div>
 
-<script>
-const suits = ['♠', '♥', '♦', '♣'];
-const values = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+        <div class="banner" id="banner"></div>
+        <div class="toast" id="toast">Type a bet and place it. Shuffle anytime for a fresh 52-card deck. Blackjack pays 3:2.</div>
+      </div>
+    </div>
+  </div>
 
-let deck = [];
-let playerHand = [];
-let dealerHand = [];
-let saldo = 0;
-let bet = 0;
-let gameOver = false;
-let dealerTurning = false;
+  <script>
+    const SERVER_URL = 'https://casinoaqua-server.onrender.com';
 
-function lataaSaldo(){
-  let s = localStorage.getItem("casino_saldo");
-  if (s === null){
-    s = 1000;
-    localStorage.setItem("casino_saldo", s);
-  }
-  saldo = parseInt(s);
-  document.getElementById("balance").textContent = saldo;
-}
-function tallennaSaldo(){
-  localStorage.setItem("casino_saldo", saldo);
-  document.getElementById("balance").textContent = saldo;
-}
-function resetSaldo(){
-  saldo = 1000;
-  tallennaSaldo();
-  resetGame();
-  document.getElementById('result').textContent = '';
-}
+    const $ = (sel, root=document) => root.querySelector(sel);
+    const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
 
-function createDeck(){
-  deck = [];
-  for(let s=0; s<suits.length; s++){
-    for(let v=0; v<values.length; v++){
-      deck.push({suit: suits[s], value: values[v]});
+    const state = {
+      balance: 0,
+      currentBet: 0,
+      deck: [],
+      handInProgress: false,
+      dealerHole: null,
+      player: [],
+      dealer: [],
+      doubled: false,
+      canDouble: false,
+    };
+
+    const ranks = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+    const suits = ['♠','♥','♦','♣'];
+
+    async function loadUserAndBalance(){
+      try{
+        const token = localStorage.getItem('token');
+        if(!token) return;
+        const res = await fetch(`${SERVER_URL}/me`, { headers: { 'Authorization': `Bearer ${token}` }});
+        const data = await res.json();
+        if(data && data.success){
+          state.balance = Number(data.user.balance)||0;
+          updateHUD();
+        }
+      }catch(e){}
     }
-  }
-}
 
-function shuffleDeck(){
-  for(let i=deck.length-1; i>0; i--){
-    let j = Math.floor(Math.random()*(i+1));
-    [deck[i], deck[j]] = [deck[j], deck[i]];
-  }
-}
-
-function cardValue(card){
-  if(['J','Q','K'].includes(card.value)) return 10;
-  if(card.value === 'A') return 11;
-  return parseInt(card.value);
-}
-
-function calcScore(hand){
-  let score = 0;
-  let aces = 0;
-  for(let card of hand){
-    score += cardValue(card);
-    if(card.value === 'A') aces++;
-  }
-  // A:n arvon säätö 11->1 jos yli 21
-  while(score > 21 && aces > 0){
-    score -= 10;
-    aces--;
-  }
-  return score;
-}
-
-function renderHand(elementId, hand, hideFirst=false){
-  const container = document.getElementById(elementId);
-  container.innerHTML = '';
-  for(let i=0; i<hand.length; i++){
-    const c = document.createElement('div');
-    c.className = 'card';
-    if(hand[i].suit === '♥' || hand[i].suit === '♦') c.classList.add('red');
-    if(i===0 && hideFirst){
-      c.textContent = '❓';
-      c.style.background = '#555';
-      c.style.color = '#555';
-      c.style.borderColor = '#333';
-    } else {
-      c.innerHTML = `<div>${hand[i].value}</div><div style="font-size:22px;">${hand[i].suit}</div>`;
+    async function saveBalance(){
+      try{
+        const token = localStorage.getItem('token');
+        if(!token) return;
+        await fetch(`${SERVER_URL}/update-balance`, {
+          method:'POST',
+          headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${token}` },
+          body: JSON.stringify({ balance: state.balance })
+        });
+      }catch(e){}
     }
-    container.appendChild(c);
-  }
-}
 
-function resetGame(){
-  playerHand = [];
-  dealerHand = [];
-  gameOver = false;
-  dealerTurning = false;
-  document.getElementById('result').textContent = '';
-  document.getElementById('dealer-score').textContent = '';
-  document.getElementById('player-score').textContent = '';
-  renderHand('dealer-hand', dealerHand, true);
-  renderHand('hand', playerHand);
-  document.getElementById('hitBtn').disabled = true;
-  document.getElementById('standBtn').disabled = true;
-}
+    function shuffleDeck(){
+      state.deck = [];
+      for(const s of suits){ for(const r of ranks){ state.deck.push({r,s}); }}
+      for(let i=state.deck.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [state.deck[i], state.deck[j]] = [state.deck[j], state.deck[i]]; }
+    }
 
-function startGame(){
-  resetGame();
-  bet = parseInt(document.getElementById('bet').value);
-  if(isNaN(bet) || bet < 1){
-    alert('Anna kelvollinen panos!');
-    return;
-  }
-  if(bet > saldo){
-    alert('Ei tarpeeksi saldoa.');
-    return;
-  }
+    function updateHUD(){
+      $('#balance').textContent = `$${state.balance.toLocaleString()}`;
+      $('#bet').textContent = `$${state.currentBet.toLocaleString()}`;
+    }
 
-  saldo -= bet;
-  tallennaSaldo();
+    function setLaneTotals(){
+      const p = handTotals(state.player).total;
+      const d = $('#dealerLane .card.back') ? handTotals([state.dealer[0]]).total : handTotals(state.dealer).total;
+      $('#playerTotal').textContent = p;
+      $('#dealerTotal').textContent = d;
+    }
 
-  createDeck();
-  shuffleDeck();
+    function toast(msg){ const t=$('#toast'); t.textContent=msg; t.style.opacity=1; clearTimeout(t._timer); t._timer=setTimeout(()=> t.style.opacity=.6, 2200); }
 
-  playerHand.push(deck.pop());
-  dealerHand.push(deck.pop());
-  playerHand.push(deck.pop());
-  dealerHand.push(deck.pop());
+    function cardValue(card){ if(card.r==='A') return 11; if(['K','Q','J','10'].includes(card.r)) return 10; return parseInt(card.r,10); }
 
-  renderHand('dealer-hand', dealerHand, true);
-  renderHand('hand', playerHand);
-  updateScores();
+    function handTotals(hand){
+      let total = 0; let aces = 0;
+      for(const c of hand){ const v = cardValue(c); if(c.r==='A') aces++; total += v; }
+      while(total>21 && aces>0){ total -= 10; aces--; }
+      return { total };
+    }
 
-  document.getElementById('hitBtn').disabled = false;
-  document.getElementById('standBtn').disabled = false;
-}
+    function isBlackjack(hand){ return hand.length===2 && handTotals(hand).total===21; }
 
-function updateScores(hideDealerFirst=true){
-  const playerScore = calcScore(playerHand);
-  document.getElementById('player-score').textContent = `Pisteet: ${playerScore}`;
-  if(hideDealerFirst){
-    const dealerScore = calcScore(dealerHand.slice(1)); // piilotetaan ensimmäinen kortti
-    document.getElementById('dealer-score').textContent = `Dealer: ? + ${dealerScore}`;
-  } else {
-    const dealerScore = calcScore(dealerHand);
-    document.getElementById('dealer-score').textContent = `Dealer: ${dealerScore}`;
-  }
-}
+    function draw(){ if(state.deck.length===0) shuffleDeck(); return state.deck.pop(); }
 
-function hit(){
-  if(gameOver || dealerTurning) return;
+    function clearLane(lane){ $$('.card', lane).forEach(c=>c.remove()); }
 
-  playerHand.push(deck.pop());
-  renderHand('hand', playerHand);
-  updateScores();
+    function makeCardEl(card, facedown=false){
+      const el = document.createElement('div');
+      el.className = 'card deal' + (facedown?' back':'');
+      if(!facedown){
+        const red = (card.s==='♥' || card.s==='♦');
+        el.innerHTML = `
+          <div class="face ${red?'red':'black'}">
+            <div class="corner"><div class="rank">${card.r}</div><div class="pip">${card.s}</div></div>
+            <div class="suit">${card.s}</div>
+            <div class="corner right"><div class="rank">${card.r}</div><div class="pip">${card.s}</div></div>
+          </div>`;
+      }
+      return el;
+    }
 
-  const score = calcScore(playerHand);
-  if(score > 21){
-    endGame("Bust! Hävisit.");
-  }
-}
-
-function sleep(ms){
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-async function stand(){
-  if(gameOver || dealerTurning) return;
-  dealerTurning = true;
-  document.getElementById('hitBtn').disabled = true;
-  document.getElementById('standBtn').disabled = true;
-
-  renderHand('dealer-hand', dealerHand, false);
-  updateScores(false);
-
-  // Dealer nostaa kortteja yksi kerrallaan, pysähtyy 17 tai yli
-  while(calcScore(dealerHand) < 17){
-    await sleep(1000);
-    dealerHand.push(deck.pop());
-    renderHand('dealer-hand', dealerHand, false);
-    updateScores(false);
-  }
-
-  const playerScore = calcScore(playerHand);
-  const dealerScore = calcScore(dealerHand);
-
-  if(dealerScore > 21){
-    endGame("Dealer bust! Voitit!");
-    saldo += bet * 2;
-  } else if(dealerScore === playerScore){
-    endGame("Tasapeli.");
-    saldo += bet; // palautus
-  } else if(dealerScore > playerScore){
-    endGame("Hävisit.");
-  } else {
-    endGame("Voitit!");
-    saldo += bet * 2;
-  }
-  tallennaSaldo();
-  dealerTurning = false;
-}
-
-function endGame(message){
-  gameOver = true;
-  document.getElementById('result').textContent = message;
-  document.getElementById('hitBtn').disabled = true;
-  document.getElementById('standBtn').disabled = true;
-}
-
-lataaSaldo();
-resetGame();
-</script>
-</body>
-</html>
+    function setActions({deal=true, hit=false, stand=false, dbl=false}){
+      $('#deal').disabled = !deal; $('#hit').disabled = !hit; $('#stand').disabled = !stand; $('#double').disabled = !dbl

@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Casino Dice Game</title>
+  <style>
+    body {
+      background: linear-gradient(to bottom, #0a2342, #0f4c75, #3282b8, #bbe1fa);
+      background-attachment: fixed;
+      background-size: cover;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .game-container {
+      width: 700px;
+      background: rgba(31, 34, 42, 0.92);
+      padding: 20px;
+      border-radius: 16px;
+      text-align: center;
+      box-shadow: 0 0 30px rgba(0,0,0,0.6);
+      position: relative;
+    }
+    .dice-logo {
+      font-size: 64px;
+      text-align: center;
+      margin-bottom: 12px;
+      text-shadow: 0 0 20px #ff0000, 0 0 40px #ff0000, 0 0 60px #ff0000;
+      animation: glow 6s linear infinite;
+    }
+    @keyframes glow {
+      0%   { text-shadow: 0 0 20px #ff0000, 0 0 40px #ff0000, 0 0 60px #ff0000; }
+      25%  { text-shadow: 0 0 20px #00ff00, 0 0 40px #00ff00, 0 0 60px #00ff00; }
+      50%  { text-shadow: 0 0 20px #0000ff, 0 0 40px #0000ff, 0 0 60px #0000ff; }
+      75%  { text-shadow: 0 0 20px #ff00ff, 0 0 40px #ff00ff, 0 0 60px #ff00ff; }
+      100% { text-shadow: 0 0 20px #ff0000, 0 0 40px #ff0000, 0 0 60px #ff0000; }
+    }
+    .balance { font-size: 18px; margin-bottom: 12px; font-weight: 700; text-align: left; }
+    .top-row {display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+    .bet-section { margin-bottom: 8px; text-align: right; }
+    .bet-section input {
+      width: 120px; padding: 6px; border-radius: 6px;
+      border: none; text-align: center; background:#2a2d33;color:#fff
+    }
+    .slider-container { margin: 18px 0 8px; text-align: center; position: relative; }
+    .range-bar {
+      position: relative; height: 12px; background: #333;
+      border-radius: 6px; margin: 10px auto;
+      width: 100%; max-width: 620px;
+    }
+    .left-fill{position:absolute;left:0;top:0;bottom:0;background:#c0392b;border-radius:6px}
+    .right-fill{position:absolute;right:0;top:0;bottom:0;background:#27ae60;border-radius:6px}
+    .slider {
+      -webkit-appearance: none; appearance: none; width: 100%; height: 12px;
+      background: transparent; position: absolute; top: 0; left: 0;
+      margin: 0; padding: 0;
+    }
+    .slider::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none; width: 20px; height: 20px;
+      border-radius: 4px; background: #2f80ed; cursor: pointer;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.6); position: relative; top: -4px;
+    }
+    .scale-labels{display:flex;justify-content:space-between;font-size:13px;color:#b3b8bf;margin-top:8px}
+    .output-section { display: flex; justify-content: space-between; margin-top: 12px; font-size: 15px; color:#dce3e9; }
+    .result { text-align: center; font-size: 22px; font-weight: bold; margin-top: 14px; min-height:60px; }
+    .animate-number { font-size: 44px; animation: pop 0.4s ease; display:inline-block; min-width:72px; }
+    @keyframes pop { 0% { transform: scale(0.6); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+    .roll-marker {
+      position: absolute;
+      bottom: 22px;
+      font-size: 14px;
+      font-weight: bold;
+      transform: translateX(-50%);
+      opacity: 0;
+      transition: left 0.8s ease, opacity 0.4s ease;
+      pointer-events: none;
+    }
+    .roll-marker.win { color: #00ffb2; text-shadow: 0 0 6px #00ffb2; }
+    .roll-marker.lose { color: #ff2e63; text-shadow: 0 0 6px #ff2e63; }
+
+    .roll-btn {
+      margin-top: 18px; padding: 12px 20px; border: none; border-radius: 8px;
+      background: #2f80ed; color: #fff; font-size: 16px; cursor: pointer;
+      width: 100%; max-width: 620px;
+      box-shadow: 0 0 12px rgba(47,128,237,0.7); transition: transform 0.1s ease, background 0.3s;
+    }
+    .roll-btn:active { transform: scale(0.95); }
+    .roll-btn:disabled {
+      background: #555;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    .small{font-size:13px;color:#bfc7cc}
+    .toggle { margin: 10px 0; }
+    .toggle button {
+      padding: 6px 14px; border: none; border-radius: 6px; margin: 0 5px;
+      cursor: pointer; background:#2a2d33; color:#fff;
+    }
+    .toggle button.active { background:#2f80ed; }
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <div class="dice-logo">🎲</div>
+    <div class="top-row">
+      <div class="balance">Balance: <span id="balance">0.00</span> credits</div>
+      <div class="bet-section">
+        <label class="small">Bet:</label>
+        <input type="number" id="betAmount" value="1" min="0.01" step="0.01">
+      </div>
+    </div>
+
+    <div class="toggle">
+      <button id="underBtn" class="active" onclick="setMode('under')">Roll Under</button>
+      <button id="overBtn" onclick="setMode('over')">Roll Over</button>
+    </div>
+
+    <div class="slider-container">
+      <div class="range-bar" id="rangeBar">
+        <div id="leftFill" class="left-fill" style="width:50%"></div>
+        <div id="rightFill" class="right-fill" style="width:50%"></div>
+        <div id="rollMarker" class="roll-marker">0.00</div>
+        <input type="range" id="rollTarget" class="slider" min="1" max="99" step="0.1" value="50" oninput="updateSlider()">
+      </div>
+      <div class="scale-labels" style="max-width:620px;margin:0 auto;">
+        <span>0</span><span>25</span><span>50</span><span>75</span><span>100</span>
+      </div>
+    </div>
+
+    <div class="output-section">
+      <div>Multiplier: <strong id="multiplier">1.98</strong>x</div>
+      <div>Target: <strong id="targetVal">50</strong></div>
+    </div>
+
+    <div class="result" id="resultDisplay"><span class="small">Press Roll to play</span></div>
+    <button class="roll-btn" id="rollBtn" onclick="roll()">Roll</button>
+  </div>
+
+<script>
+const SERVER_URL = 'https://casinoaqua-server.onrender.com';
+
+let balance = 0.00;
+const houseEdge = 0.01; 
+let mode = "under"; 
+let isRolling = false; 
+
+const balanceEl = document.getElementById('balance');
+const targetEl = document.getElementById('rollTarget');
+const targetValEl = document.getElementById('targetVal');
+const multiplierEl = document.getElementById('multiplier');
+const leftFill = document.getElementById('leftFill');
+const rightFill = document.getElementById('rightFill');
+const resultDisplay = document.getElementById('resultDisplay');
+const betInput = document.getElementById('betAmount');
+const marker = document.getElementById('rollMarker');
+const rollBtn = document.getElementById('rollBtn');
+
+function format(n){ return Number(n).toFixed(2); }
+
+async function loadUserAndBalance(){
+  try{
+    const token = localStorage.getItem('token');
+    if(!token) return;
+    const res = await fetch(`${SERVER_URL}/me`, { headers: { 'Authorization': `Bearer ${token}` }});
+    const data = await res.json();
+    if(data && data.success){
+      balance = Number(data.user.balance) || 0;
+      balanceEl.textContent = format(balance);
+    }
+  }catch(e){}
+}
+
+async function saveBalance(){
+  try{
+    const token = localStorage.getItem('token');
+    if(!token) return;
+    await fetch(`${SERVER_URL}/update-balance`, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${token}` },
+      body: JSON.stringify({ balance })
+    });
+  }catch(e){}
+}
+
+function setMode(m){
+  mode = m;
+  document.getElementById('underBtn').classList.toggle("active", m==="under");
+  document.getElementById('overBtn').classList.toggle("active", m==="over");
+  updateSlider();
+}
+
+function updateSlider(){
+  const t = parseFloat(targetEl.value);
+  targetValEl.textContent = t.toFixed(1);
+
+  let chance = (mode === "under") ? t : (100 - t);
+  leftFill.style.width = t + '%';
+  rightFill.style.width = (100 - t) + '%';
+
+  let mult = (100 / chance) * (1 - houseEdge);
+  if(mult < 1.01) mult = 1.01;
+  multiplierEl.textContent = mult.toFixed(2);
+}
+
+function animateBalance(from, to){
+  const steps = 20;
+  let step = 0;
+  const diff = to - from;
+  const interval = setInterval(()=>{
+    step++;
+    balanceEl.textContent = format(from + diff * (step/steps));
+    if(step >= steps) clearInterval(interval);
+  }, 25);
+}
+
+async function roll(){
+  if(isRolling) return; 
+  isRolling = true;
+  rollBtn.disabled = true;
+
+  const bet = parseFloat(betInput.value) || 0;
+  if(bet <= 0){ alert('Enter a valid bet'); isRolling = false; rollBtn.disabled = false; return; }
+  if(bet > balance){ alert('Not enough balance'); isRolling = false; rollBtn.disabled = false; return; }
+
+  balance -= bet;
+  balanceEl.textContent = format(balance);
+  resultDisplay.style.color = "#dce3e9";
+  resultDisplay.innerHTML = `<span class="animate-number">...</span><div class="small">Rolling...</div>`;
+  marker.style.opacity = 0;
+
+  setTimeout(async ()=>{
+    const rollVal = Math.floor(Math.random() * 10000) / 100; 
+    const t = parseFloat(targetEl.value);
+    const chance = (mode==="under") ? t : (100 - t);
+    let mult = (100 / chance) * (1 - houseEdge);
+    if(mult < 1.01) mult = 1.01;
+
+    let win = (mode==="under") ? (rollVal < t) : (rollVal > t);
+
+    const bar = document.getElementById("rangeBar");
+    const barWidth = bar.offsetWidth;
+    const pos = (rollVal / 100) * barWidth;
+    marker.textContent = rollVal.toFixed(2);
+    marker.className = "roll-marker " + (win ? "win" : "lose");
+    marker.style.left = pos + "px";
+    marker.style.opacity = 1;
+
+    if(win){
+      const payout = bet * mult;
+      const profit = payout - bet;
+      animateBalance(balance, balance + payout);
+      balance += payout;
+      resultDisplay.style.color = '#7be495';
+      resultDisplay.innerHTML = `<span class="animate-number">${rollVal.toFixed(2)}</span><div class="small">WIN! +${profit.toFixed(2)}</div>`;
+    } else {
+      resultDisplay.style.color = '#ff7b88';
+      resultDisplay.innerHTML = `<span class="animate-number">${rollVal.toFixed(2)}</span><div class="small">LOSE -${bet.toFixed(2)}</div>`;
+    }
+
+    await saveBalance();
+    isRolling = false; 
+    rollBtn.disabled = false; 
+  }, 800);
+}
+
+updateSlider();
+loadUserAndBalance();
+
+window.addEventListener('keydown', (e)=>{
+  if(e.code === 'Space'){
+    e.preventDefault();
+    document.getElementById('rollBtn').click();
+  }
+});
+</script>
+</body>
+</html>
