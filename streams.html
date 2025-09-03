@@ -281,6 +281,18 @@ https://templatemo.com/tm-579-cyborg-gaming
     #aqua-arpa .aa-btn { margin-top: 10px; padding: 10px 16px; border: 0; border-radius: 10px; background: #00aaff; color: #fff;
       font-weight: 700; cursor: pointer; }
     #aqua-arpa .aa-info { margin-top: 8px; font-size: 14px; color: #666; }
+    #aqua-arpa .aa-instruction { 
+      position: absolute; 
+      top: 50%; 
+      left: 50%; 
+      transform: translate(-50%, -50%); 
+      color: #444; 
+      font-weight: bold; 
+      font-size: 28px; 
+      pointer-events: none; 
+      z-index: 2; 
+      text-align: center;
+    }
   </style>
 </head>
 <body>
@@ -293,7 +305,6 @@ https://templatemo.com/tm-579-cyborg-gaming
     </div>
   </div>
 
-  <script src="auth.js"></script>
   <script>
     const SERVER_URL = 'https://casinoaqua-server.onrender.com';
     let balance = 0;
@@ -350,6 +361,7 @@ https://templatemo.com/tm-579-cyborg-gaming
               <div id="aa-bonus-text" class="aa-bonus-text"></div>
             </div>
           </div>
+          <div class="aa-instruction">Raaputa tästä</div>
           <canvas id="aa-canvas" class="aa-canvas"></canvas>
         </div>
       `;
@@ -400,28 +412,57 @@ https://templatemo.com/tm-579-cyborg-gaming
       canvas.style.height = cssH + "px";
       ctx.scale(dpr, dpr);
 
-      ctx.fillStyle = "#c0c0c0"; ctx.fillRect(0, 0, cssW, cssH);
-      ctx.fillStyle = "#444"; ctx.font = "bold 28px sans-serif";
-      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      // Piirrä harmaa raaputuskerros
+      ctx.fillStyle = "rgba(192, 192, 192, 0.9)";
+      ctx.fillRect(0, 0, cssW, cssH);
+      
+      // Piirrä raaputettava teksti
+      ctx.globalCompositeOperation = "source-over";
+      ctx.fillStyle = "#444";
+      ctx.font = "bold 28px sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
       ctx.fillText("Raaputa", cssW/2, cssH/2);
+      
+      // Aseta kompositio takaisin raaputusta varten
       ctx.globalCompositeOperation = "destination-out";
 
-      let drawing = false; const brush = 22;
+      let drawing = false; 
+      const brush = 22;
+      
       function getPoint(e) {
         const rect = canvas.getBoundingClientRect();
         if (e.touches && e.touches[0]) {
-          return { x: e.touches[0].clientX - rect.left, y: e.touches[0].clientY - rect.top };
+          return { 
+            x: (e.touches[0].clientX - rect.left) * (cssW / rect.width),
+            y: (e.touches[0].clientY - rect.top) * (cssH / rect.height)
+          };
         }
-        return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        return { 
+          x: (e.clientX - rect.left) * (cssW / rect.width),
+          y: (e.clientY - rect.top) * (cssH / rect.height)
+        };
       }
-      function startDraw(e) { drawing = true; scratch(e); }
-      function endDraw() { drawing = false; checkReveal(); }
+      
+      function startDraw(e) { 
+        drawing = true; 
+        scratch(e); 
+      }
+      
+      function endDraw() { 
+        drawing = false; 
+        checkReveal(); 
+      }
+      
       function scratch(e) {
         if (!drawing) return;
         if (e.cancelable) e.preventDefault();
         const { x, y } = getPoint(e);
-        ctx.beginPath(); ctx.arc(x, y, brush, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); 
+        ctx.arc(x, y, brush, 0, Math.PI * 2); 
+        ctx.fill();
       }
+      
       canvas.addEventListener("mousedown", startDraw);
       canvas.addEventListener("mousemove", scratch);
       canvas.addEventListener("mouseup", endDraw);
@@ -445,11 +486,14 @@ https://templatemo.com/tm-579-cyborg-gaming
         for (let i = 3; i < imageData.data.length; i += 4) {
           if (imageData.data[i] === 0) transparent++;
         }
-        if (transparent / (canvas.width * canvas.height) > 0.55) revealResults();
+        const revealedRatio = transparent / (canvas.width * canvas.height);
+        if (revealedRatio > 0.55) revealResults();
       }
 
       async function revealResults() {
-        canvas.remove();
+        canvas.style.display = "none";
+        document.querySelector('.aa-instruction').style.display = "none";
+        
         const mainWin = getMainWin();
         const total = mainWin + (bonus?.amount || 0);
         resultsEl.innerHTML = `
