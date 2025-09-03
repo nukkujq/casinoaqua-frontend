@@ -173,6 +173,9 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
     }
 });
 
+
+
+
 // Auto load user on page load
 (async function loadUser(){
   const token = localStorage.getItem('token');
@@ -184,6 +187,27 @@ document.getElementById('loginBtn').addEventListener('click', async () => {
   }catch(e){}
 })();
 </script>
+
+
+<script>
+  // Kun auth.js päivittää localStorage.userBalance, päivitämme UI:n välittömästi
+  window.addEventListener('storage', (e) => {
+    if (e.key === 'userBalance') {
+      const val = Number(e.newValue || 0);
+      const el = document.getElementById('profileBalance');
+      if (el) el.innerText = val;
+      // päivitä muut kentät jos haluat
+    }
+  });
+
+  // myös custom event jos auth.js dispatchaa sen
+  window.addEventListener('balanceUpdated', (e) => {
+    const val = Number((e && e.detail && e.detail.balance) || 0);
+    const el = document.getElementById('profileBalance');
+    if (el) el.innerText = val;
+  });
+</script>
+
 
 </body>
 </html>

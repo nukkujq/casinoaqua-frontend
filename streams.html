@@ -263,123 +263,21 @@ https://templatemo.com/tm-579-cyborg-gaming
     <title>🌊 AquaArpa 🌊</title>
     <style>
         /* ------- AquaArpa (namespaced) ------- */
-        #aqua-arpa {
-            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-            color: #000;
-            margin: 20px auto;
-            max-width: 800px;
-        }
-        #aqua-arpa .aa-wrap {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 12px;
-            background: rgba(0,0,0,0.7);
-            padding: 20px;
-            border-radius: 15px;
-        }
-        #aqua-arpa h1 {
-            margin: 0;
-            font-size: 24px;
-            color: #00aaff;
-            text-align: center;
-        }
-        #aqua-arpa .aa-card {
-            position: relative;
-            width: 320px;
-            height: 350px;
-            border-radius: 16px;
-            background: #fff;
-            box-shadow: 0 8px 24px rgba(0,0,0,.18);
-            overflow: hidden;
-        }
-        #aqua-arpa .aa-content {
-            position: absolute;
-            inset: 0;
-            padding: 12px;
-            display: flex;
-            flex-direction: column;
-            z-index: 1;
-        }
-        #aqua-arpa .aa-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            margin-top: 6px;
-        }
-        #aqua-arpa .aa-cell {
-            background: #ffffff;
-            border-radius: 10px;
-            height: 70px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            font-weight: 800;
-            line-height: 1;
-            color: #000;
-            box-shadow: inset 0 0 4px rgba(0,0,0,.15);
-            user-select: none;
-        }
-        #aqua-arpa .aa-bonus-wrap {
-            margin-top: 8px;
-            text-align: center;
-        }
-        #aqua-arpa .aa-bonus-title {
-            font-size: 12px;
-            letter-spacing: .12em;
-            color: #666;
-            margin-bottom: 6px;
-            user-select: none;
-        }
-        #aqua-arpa .aa-bonus-text {
-            background: #ffffff;
-            border-radius: 10px;
-            padding: 10px 12px;
-            font-size: 18px;
-            font-weight: 800;
-            color: #000;
-            display: inline-block;
-            box-shadow: inset 0 0 4px rgba(0,0,0,.15);
-            user-select: none;
-        }
-        #aqua-arpa .aa-canvas {
-            position: absolute;
-            inset: 0;
-            border-radius: 16px;
-            z-index: 3;
-            touch-action: none;
-        }
-        #aqua-arpa .aa-results {
-            text-align: center;
-            color: #fff;
-            padding: 15px;
-            background: rgba(0,0,0,0.7);
-            border-radius: 10px;
-            margin-top: 15px;
-        }
-        #aqua-arpa .aa-btn {
-            margin-top: 10px;
-            padding: 10px 16px;
-            border: 0;
-            border-radius: 10px;
-            background: #00aaff;
-            color: #fff;
-            font-weight: 700;
-            cursor: pointer;
-        }
-        #aqua-arpa .aa-info {
-            margin-top: 8px;
-            font-size: 14px;
-            color: #ffcc00;
-        }
-        #aqua-arpa .aa-login-prompt {
-            text-align: center;
-            color: #ffcc00;
-            padding: 20px;
-            background: rgba(0,0,0,0.7);
-            border-radius: 10px;
-        }
+        #aqua-arpa { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color: #000; margin: 20px auto; max-width: 800px; }
+        #aqua-arpa .aa-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; background: rgba(0,0,0,0.7); padding: 20px; border-radius: 15px; }
+        #aqua-arpa h1 { margin: 0; font-size: 24px; color: #00aaff; text-align: center; }
+        #aqua-arpa .aa-card { position: relative; width: 320px; height: 350px; border-radius: 16px; background: #fff; box-shadow: 0 8px 24px rgba(0,0,0,.18); overflow: hidden; }
+        #aqua-arpa .aa-content { position: absolute; inset: 0; padding: 12px; display: flex; flex-direction: column; z-index: 1; }
+        #aqua-arpa .aa-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 6px; }
+        #aqua-arpa .aa-cell { background: #ffffff; border-radius: 10px; height: 70px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; line-height: 1; color: #000; box-shadow: inset 0 0 4px rgba(0,0,0,.15); user-select: none; }
+        #aqua-arpa .aa-bonus-wrap { margin-top: 8px; text-align: center; }
+        #aqua-arpa .aa-bonus-title { font-size: 12px; letter-spacing: .12em; color: #666; margin-bottom: 6px; user-select: none; }
+        #aqua-arpa .aa-bonus-text { background: #ffffff; border-radius: 10px; padding: 10px 12px; font-size: 18px; font-weight: 800; color: #000; display: inline-block; box-shadow: inset 0 0 4px rgba(0,0,0,.15); user-select: none; }
+        #aqua-arpa .aa-canvas { position: absolute; inset: 0; border-radius: 16px; z-index: 3; touch-action: none; }
+        #aqua-arpa .aa-results { text-align: center; color: #fff; padding: 15px; background: rgba(0,0,0,0.7); border-radius: 10px; margin-top: 15px; }
+        #aqua-arpa .aa-btn { margin-top: 10px; padding: 10px 16px; border: 0; border-radius: 10px; background: #00aaff; color: #fff; font-weight: 700; cursor: pointer; }
+        #aqua-arpa .aa-info { margin-top: 8px; font-size: 14px; color: #ffcc00; }
+        #aqua-arpa .aa-login-prompt { text-align: center; color: #ffcc00; padding: 20px; background: rgba(0,0,0,0.7); border-radius: 10px; }
     </style>
 </head>
 <body>
@@ -396,69 +294,25 @@ https://templatemo.com/tm-579-cyborg-gaming
         </div>
     </div>
 
+    <!-- auth.js pitää olla ladattuna ennen tätä -->
+    <script src="auth.js"></script>
+
     <script>
-        // SERVER_URL määritellään globaalisti
-        const SERVER_URL = 'https://casinoaqua-server.onrender.com';
-        
         let balance = 0;
         let currentUser = null;
-        
-        // Auth.js -funktiot
-        async function getCurrentUser() {
-            const token = localStorage.getItem('token');
-            if (!token) return null;
-            try {
-                const res = await fetch(`${SERVER_URL}/me`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                const data = await res.json();
-                if (data.success) return data.user;
-            } catch (e) {
-                console.error("getCurrentUser error:", e);
-            }
-            return null;
-        }
-        
-        async function updateBalance(newBalance) {
-            const token = localStorage.getItem('token');
-            if (!token) return false;
-            try {
-                const response = await fetch(`${SERVER_URL}/update-balance`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({ balance: newBalance })
-                });
-                
-                const data = await response.json();
-                if (data.success) {
-                    // Päivitä UI jos balance elementti löytyy
-                    const b = document.getElementById('profileBalance');
-                    if (b) b.innerText = newBalance;
-                    return true;
-                }
-                return false;
-            } catch (e) {
-                console.error("updateBalance error:", e);
-                return false;
-            }
-        }
 
         window.addEventListener("DOMContentLoaded", async () => {
-            // Haetaan käyttäjä
-            currentUser = await getCurrentUser();
+            // Haetaan käyttäjä auth.js:stä
+            currentUser = await window.getCurrentUser();
             if (currentUser) {
-                balance = currentUser.balance || 0;
+                balance = Number(currentUser.balance) || 0;
                 document.getElementById("profileBalance").innerText = balance;
                 document.getElementById("aa-login-prompt").style.display = "none";
             } else {
                 document.getElementById("profileBalance").innerText = 0;
                 document.getElementById("aa-login-prompt").style.display = "block";
             }
-            
-            // Käynnistetään peli
+
             startAquaArpa();
         });
 
@@ -466,7 +320,7 @@ https://templatemo.com/tm-579-cyborg-gaming
             const gameRoot = document.getElementById("aa-game");
             const resultsEl = document.getElementById("aa-results");
             resultsEl.innerHTML = "";
-            
+
             gameRoot.innerHTML = `
                 <div class="aa-card">
                     <div class="aa-content">
@@ -479,7 +333,7 @@ https://templatemo.com/tm-579-cyborg-gaming
                     <canvas id="aa-canvas" class="aa-canvas"></canvas>
                 </div>
             `;
-            
+
             function weightedChoice(weights) {
                 const total = weights.reduce((s, w) => s + w.p, 0);
                 let r = Math.random() * total;
@@ -488,7 +342,7 @@ https://templatemo.com/tm-579-cyborg-gaming
                 }
                 return weights[weights.length - 1].value;
             }
-            
+
             const prizeWeights = [
                 { value: 1000, p: 0.5 },
                 { value: 500, p: 2 },
@@ -499,23 +353,23 @@ https://templatemo.com/tm-579-cyborg-gaming
                 { value: 5, p: 22 },
                 { value: 0, p: 25 },
             ];
-            
+
             const bonusWeights = [
                 { value: { label: "Ei bonusvoittoa", amount: 0 }, p: 70 },
                 { value: { label: "Helmi! +20€", amount: 20 }, p: 20 },
                 { value: { label: "Helmi! +50€", amount: 50 }, p: 9 },
                 { value: { label: "Harvinainen helmi! +100€", amount: 100 }, p: 1 },
             ];
-            
+
             const forced = weightedChoice(prizeWeights);
             const cells = Array.from({ length: 9 }, () => weightedChoice(prizeWeights));
-            
+
             if (forced !== 0) {
                 for (let i = 0; i < 3; i++) cells[i] = forced;
             }
-            
+
             cells.sort(() => Math.random() - 0.5);
-            
+
             const gridEl = document.getElementById("aa-grid");
             cells.forEach(v => {
                 const d = document.createElement("div");
@@ -523,38 +377,38 @@ https://templatemo.com/tm-579-cyborg-gaming
                 d.textContent = v > 0 ? `${v}€` : "🦈";
                 gridEl.appendChild(d);
             });
-            
+
             const bonus = weightedChoice(bonusWeights);
             document.getElementById("aa-bonus-text").textContent = bonus.label;
-            
+
             const canvas = document.getElementById("aa-canvas");
             const card = canvas.parentElement;
             const ctx = canvas.getContext("2d");
-            
+
             const dpr = Math.max(1, window.devicePixelRatio || 1);
             const cssW = card.clientWidth;
             const cssH = card.clientHeight;
-            
+
             canvas.width = Math.floor(cssW * dpr);
             canvas.height = Math.floor(cssH * dpr);
             canvas.style.width = cssW + "px";
             canvas.style.height = cssH + "px";
             ctx.scale(dpr, dpr);
-            
+
             ctx.fillStyle = "#c0c0c0";
             ctx.fillRect(0, 0, cssW, cssH);
-            
+
             ctx.fillStyle = "#444";
             ctx.font = "bold 28px sans-serif";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillText("Raaputa", cssW/2, cssH/2);
-            
+
             ctx.globalCompositeOperation = "destination-out";
-            
+
             let drawing = false;
             const brush = 22;
-            
+
             function getPoint(e) {
                 const rect = canvas.getBoundingClientRect();
                 if (e.touches && e.touches[0]) {
@@ -568,79 +422,70 @@ https://templatemo.com/tm-579-cyborg-gaming
                     y: e.clientY - rect.top
                 };
             }
-            
-            function startDraw(e) {
-                drawing = true;
-                scratch(e);
-            }
-            
-            function endDraw() {
-                drawing = false;
-                checkReveal();
-            }
-            
+
+            function startDraw(e) { drawing = true; scratch(e); }
+            function endDraw() { drawing = false; checkReveal(); }
             function scratch(e) {
                 if (!drawing) return;
                 if (e.cancelable) e.preventDefault();
-                
                 const { x, y } = getPoint(e);
                 ctx.beginPath();
                 ctx.arc(x, y, brush, 0, Math.PI * 2);
                 ctx.fill();
             }
-            
+
             canvas.addEventListener("mousedown", startDraw);
             canvas.addEventListener("mousemove", scratch);
             canvas.addEventListener("mouseup", endDraw);
             canvas.addEventListener("mouseleave", endDraw);
-            
+
             canvas.addEventListener("touchstart", startDraw, { passive: false });
             canvas.addEventListener("touchmove", scratch, { passive: false });
             canvas.addEventListener("touchend", endDraw);
-            
+
             function getMainWin() {
                 const counts = {};
                 cells.forEach(n => counts[n] = (counts[n] || 0) + 1);
-                
+
                 const winners = Object.entries(counts)
                     .filter(([v, c]) => Number(v) > 0 && c >= 3)
                     .map(([v]) => Number(v));
-                
+
                 return winners.length ? Math.max(...winners) : 0;
             }
-            
+
             function checkReveal() {
                 const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                 let transparent = 0;
-                
+
                 for (let i = 3; i < imageData.data.length; i += 4) {
                     if (imageData.data[i] === 0) transparent++;
                 }
-                
+
                 if (transparent / (canvas.width * canvas.height) > 0.55) revealResults();
             }
-            
+
             async function revealResults() {
                 canvas.remove();
-                
+
                 const mainWin = getMainWin();
                 const total = mainWin + (bonus?.amount || 0);
-                
+
                 resultsEl.innerHTML = `
                     <p>Päävoitto: ${mainWin}€</p>
                     <p>Bonus: ${bonus.label}</p>
                     <p>Yhteensä: ${total}€</p>
                     <button class="aa-btn" id="aa-restart">Pelaa uudestaan</button>
                 `;
-                
+
                 document.getElementById("aa-restart").addEventListener("click", startAquaArpa);
-                
-                // Tallennetaan vain jos käyttäjä on kirjautunut
+
                 if (currentUser && total > 0) {
                     balance += total;
-                    const success = await updateBalance(balance);
+                    const success = await window.updateBalance(balance);
                     if (success) {
                         document.getElementById("profileBalance").innerText = balance;
+                        window.saveGamePlay && window.saveGamePlay("aqua-arpa", 0, total);
                     } else {
                         resultsEl.innerHTML += `<div class="aa-info">Virhe saldon päivityksessä</div>`;
                     }
@@ -655,6 +500,7 @@ https://templatemo.com/tm-579-cyborg-gaming
     </script>
 </body>
 </html>
+
 
 
 
