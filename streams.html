@@ -262,20 +262,24 @@ https://templatemo.com/tm-579-cyborg-gaming
   <meta charset="UTF-8" />
   <title>🌊 AquaArpa 🌊</title>
   <style>
-    /* ------- AquaArpa (namespaced) ------- */
-    #aqua-arpa { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color: #000; }
+    #aqua-arpa { font-family: system-ui, Arial, sans-serif; color: #000; }
     #aqua-arpa .aa-wrap { display: flex; flex-direction: column; align-items: center; gap: 12px; }
     #aqua-arpa h1 { margin: 0; font-size: 24px; color: #004466; text-align: center; }
-    #aqua-arpa .aa-card { position: relative; width: 320px; height: 350px; border-radius: 16px; background: #fff; box-shadow: 0 8px 24px rgba(0,0,0,.18); overflow: hidden; }
+    #aqua-arpa .aa-card { position: relative; width: 320px; height: 350px; border-radius: 16px; background: #fff;
+      box-shadow: 0 8px 24px rgba(0,0,0,.18); overflow: hidden; }
     #aqua-arpa .aa-content { position: absolute; inset: 0; padding: 12px; display: flex; flex-direction: column; z-index: 1; }
     #aqua-arpa .aa-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 6px; }
-    #aqua-arpa .aa-cell { background: #ffffff; border-radius: 10px; height: 70px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; line-height: 1; color: #000; box-shadow: inset 0 0 4px rgba(0,0,0,.15); user-select: none; }
+    #aqua-arpa .aa-cell { background: #ffffff; border-radius: 10px; height: 70px; display: flex; align-items: center;
+      justify-content: center; font-size: 20px; font-weight: 800; color: #000; box-shadow: inset 0 0 4px rgba(0,0,0,.15);
+      user-select: none; }
     #aqua-arpa .aa-bonus-wrap { margin-top: 8px; text-align: center; }
-    #aqua-arpa .aa-bonus-title { font-size: 12px; letter-spacing: .12em; color: #666; margin-bottom: 6px; user-select: none; }
-    #aqua-arpa .aa-bonus-text { background: #ffffff; border-radius: 10px; padding: 10px 12px; font-size: 18px; font-weight: 800; color: #000; display: inline-block; box-shadow: inset 0 0 4px rgba(0,0,0,.15); user-select: none; }
+    #aqua-arpa .aa-bonus-title { font-size: 12px; letter-spacing: .12em; color: #666; margin-bottom: 6px; }
+    #aqua-arpa .aa-bonus-text { background: #ffffff; border-radius: 10px; padding: 10px 12px; font-size: 18px; font-weight: 800;
+      color: #000; display: inline-block; box-shadow: inset 0 0 4px rgba(0,0,0,.15); }
     #aqua-arpa .aa-canvas { position: absolute; inset: 0; border-radius: 16px; z-index: 3; touch-action: none; }
     #aqua-arpa .aa-results { text-align: center; color: #333; }
-    #aqua-arpa .aa-btn { margin-top: 10px; padding: 10px 16px; border: 0; border-radius: 10px; background: #00aaff; color: #fff; font-weight: 700; cursor: pointer; }
+    #aqua-arpa .aa-btn { margin-top: 10px; padding: 10px 16px; border: 0; border-radius: 10px; background: #00aaff; color: #fff;
+      font-weight: 700; cursor: pointer; }
     #aqua-arpa .aa-info { margin-top: 8px; font-size: 14px; color: #666; }
   </style>
 </head>
@@ -289,7 +293,6 @@ https://templatemo.com/tm-579-cyborg-gaming
     </div>
   </div>
 
-  <!-- 🔑 tuo auth.js -->
   <script src="auth.js"></script>
   <script>
     const SERVER_URL = 'https://casinoaqua-server.onrender.com';
@@ -308,6 +311,7 @@ https://templatemo.com/tm-579-cyborg-gaming
         if (data && data.success) {
           balance = Number(data.user.balance) || 0;
           document.getElementById("profileBalance").innerText = balance;
+          currentUser = data.user;
         }
       } catch (e) { console.error(e); }
     }
@@ -329,12 +333,7 @@ https://templatemo.com/tm-579-cyborg-gaming
 
     // --- Peli ---
     window.addEventListener("DOMContentLoaded", async () => {
-      currentUser = await getCurrentUser();
-      if (currentUser) {
-        await loadUserAndBalance();
-      } else {
-        document.getElementById("profileBalance").innerText = 0;
-      }
+      await loadUserAndBalance();
       startAquaArpa();
     });
 
@@ -461,21 +460,24 @@ https://templatemo.com/tm-579-cyborg-gaming
         `;
         document.getElementById("aa-restart").addEventListener("click", startAquaArpa);
 
-        if (currentUser && total > 0) {
-          balance += total;
-          await saveBalance();
-          document.getElementById("profileBalance").innerText = balance;
-        } else if (!currentUser && total > 0) {
-          const info = document.createElement("div");
-          info.className = "aa-info";
-          info.innerText = "Kirjaudu sisään tallentaaksesi voitot!";
-          resultsEl.appendChild(info);
+        if (total > 0) {
+          if (currentUser) {
+            balance += total;
+            await saveBalance();
+            document.getElementById("profileBalance").innerText = balance;
+          } else {
+            const info = document.createElement("div");
+            info.className = "aa-info";
+            info.innerText = "Kirjaudu sisään tallentaaksesi voitot!";
+            resultsEl.appendChild(info);
+          }
         }
       }
     }
   </script>
 </body>
 </html>
+
 
 
 
