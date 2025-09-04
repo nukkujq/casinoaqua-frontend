@@ -478,23 +478,20 @@ https://templatemo.com/tm-579-cyborg-gaming
                     <button class="aa-btn" id="aa-restart">Pelaa uudestaan</button>
                 `;
 
-                document.getElementById("aa-restart").addEventListener("click", startAquaArpa);
+               if (currentUser && total > 0) {
+    const user = await saveGamePlay("AquaArpa", 0, total);
+    if (user) {
+        document.getElementById("profileBalance").innerText = user.balance;
+    } else {
+        resultsEl.innerHTML += `<div class="aa-info">Virhe saldon päivityksessä</div>`;
+    }
+} else if (!currentUser && total > 0) {
+    const info = document.createElement("div");
+    info.className = "aa-info";
+    info.innerText = "Kirjaudu sisään tallentaaksesi voitot!";
+    resultsEl.appendChild(info);
+}
 
-                if (currentUser && total > 0) {
-                    balance += total;
-                    const success = await window.updateBalance(balance);
-                    if (success) {
-                        document.getElementById("profileBalance").innerText = balance;
-                        window.saveGamePlay && window.saveGamePlay("aqua-arpa", 0, total);
-                    } else {
-                        resultsEl.innerHTML += `<div class="aa-info">Virhe saldon päivityksessä</div>`;
-                    }
-                } else if (!currentUser && total > 0) {
-                    const info = document.createElement("div");
-                    info.className = "aa-info";
-                    info.innerText = "Kirjaudu sisään tallentaaksesi voitot!";
-                    resultsEl.appendChild(info);
-                }
             }
         }
     </script>

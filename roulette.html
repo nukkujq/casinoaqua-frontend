@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Roulette</title>
 <style>
+
+
+  
   /* Back-nappi yläreunaan */
   .back-btn {
     position: fixed;
@@ -173,17 +176,7 @@
     }catch(e){}
   }
 
-  async function saveBalance(){
-    try{
-      const token = localStorage.getItem('token');
-      if(!token) return;
-      await fetch(`${SERVER_URL}/update-balance`, {
-        method:'POST',
-        headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${token}` },
-        body: JSON.stringify({ balance })
-      });
-    }catch(e){}
-  }
+
 
   function wedgePath(r1,r0,a0,a1){
     const rad=Math.PI/180,cx=270,cy=270;
@@ -258,11 +251,13 @@
 
   clearBtn.addEventListener('click',async()=>{
     if(spinning)return;
-    balance+=bets.reduce((s,b)=>s+b.amount,0);
-    bets=[];
-    document.querySelectorAll('.bet').forEach(b=>{b.hidden=true;b.textContent='$0';});
-    updateStats();
-    await saveBalance();
+balance+=bets.reduce((s,b)=>s+b.amount,0);
+bets=[];
+document.querySelectorAll('.bet').forEach(b=>{b.hidden=true;b.textContent='$0';});
+updateStats();
+const user = await saveGamePlay("Roulette", 0, 0);
+if (user) balanceEl.textContent = `$${user.balance}`;
+
   });
 
   function mod(n,m){return((n%m)+m)%m;}
@@ -301,7 +296,9 @@
     tag.textContent=`${winning} ${winColor.toUpperCase()}`;
     historyEl.prepend(tag);
 
-    await saveBalance();
+const user = await saveGamePlay("Roulette", bets.reduce((s,b)=>s+b.amount,0), winnings);
+if (user) balanceEl.textContent = `$${user.balance}`;
+
     spinning=false;
     clearBtn.disabled=false;
     spinBtn.disabled=false;
@@ -311,6 +308,33 @@
   loadUserAndBalance();
   updateStats();
 })();
+
+async function saveGamePlay(game, bet, win) {
+  try {
+    const token = localStorage.getItem("token");
+    if (!token) return null;
+
+    const res = await fetch(`${SERVER_URL}/play`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      },
+      body: JSON.stringify({ game, bet, win })
+    });
+
+    const data = await res.json();
+    if (data.success && data.user) {
+      return data.user; // sisältää päivitetyn saldon
+    }
+    return null;
+  } catch (err) {
+    console.error("saveGamePlay error", err);
+    return null;
+  }
+}
+
+
 </script>
 </body>
 </html>

@@ -14,7 +14,6 @@ async function getCurrentUser() {
     });
     const data = await res.json();
     if (data && data.success) {
-      // synkataan localStorage myös (kätevä muille välilehdille)
       localStorage.setItem('userBalance', String(data.user.balance || 0));
       return data.user;
     }
@@ -24,43 +23,12 @@ async function getCurrentUser() {
   return null;
 }
 
-async function updateBalance(newBalance) {
-  const token = getToken();
-  if (!token) return false;
-  try {
-    const res = await fetch(`${SERVER_URL}/update-balance`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ balance: Number(newBalance) })
-    });
-    const data = await res.json();
-    if (data && data.success) {
-      // Päivitä paikallinen UI jos elementti löytyy
-      const el = document.getElementById('profileBalance');
-      if (el) el.innerText = Number(newBalance);
-      // säilytä myös localStoragessa jotta muut välilehdet kuulee muutoksen
-      localStorage.setItem('userBalance', String(Number(newBalance)));
-      // lähetä custom event
-      window.dispatchEvent(new CustomEvent('balanceUpdated', { detail: { balance: Number(newBalance) } }));
-      return true;
-    } else {
-      console.warn('updateBalance failed', data);
-      return false;
-    }
-  } catch (e) {
-    console.error('updateBalance error', e);
-    return false;
-  }
-}
-
+// --- tärkeä osa: käytetään /play ---
 async function saveGamePlay(game, bet, win) {
   const token = getToken();
-  if (!token) return false;
+  if (!token) return null;
   try {
-    await fetch(`${SERVER_URL}/play`, {
+    const res = await fetch(`${SERVER_URL}/play`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -68,14 +36,25 @@ async function saveGamePlay(game, bet, win) {
       },
       body: JSON.stringify({ game, bet, win })
     });
-    return true;
+    const data = await res.json();
+    if (data && data.success) {
+      const newBalance = data.user.balance;
+      // Päivitä UI ja localStorage
+      const el = document.getElementById('profileBalance');
+      if (el) el.innerText = newBalance;
+      localStorage.setItem('userBalance', String(newBalance));
+      window.dispatchEvent(new CustomEvent('balanceUpdated', { detail: { balance: newBalance } }));
+      return data.user;
+    } else {
+      console.warn('saveGamePlay failed', data);
+      return null;
+    }
   } catch (e) {
     console.error('saveGamePlay error', e);
-    return false;
+    return null;
   }
 }
 
-// eksporttaa funktiot globaalisti (ei module)
+// eksporttaa globaalisti
 window.getCurrentUser = getCurrentUser;
-window.updateBalance = updateBalance;
 window.saveGamePlay = saveGamePlay;

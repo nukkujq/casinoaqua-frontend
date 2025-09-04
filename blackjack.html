@@ -161,6 +161,7 @@
     const ranks = ['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
     const suits = ['♠','♥','♦','♣'];
 
+    // Hae käyttäjä / saldo
     async function loadUserAndBalance(){
       try{
         const token = localStorage.getItem('token');
@@ -171,19 +172,35 @@
           state.balance = Number(data.user.balance)||0;
           updateHUD();
         }
-      }catch(e){}
+      }catch(e){ console.error('loadUserAndBalance', e); }
     }
 
-    async function saveBalance(){
+    // Tallennus endpointille: lähetetään pelin tiedot (server hoitaa bet-vähennyksen ja win-lisäyksen)
+    async function saveGamePlay(game, bet, win){
       try{
-        const token = localStorage.getItem('token');
-        if(!token) return;
-        await fetch(`${SERVER_URL}/update-balance`, {
-          method:'POST',
-          headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${token}` },
-          body: JSON.stringify({ balance: state.balance })
+        const token = localStorage.getItem("token");
+        if (!token) return null;
+        const res = await fetch(`${SERVER_URL}/play`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify({ game, bet, win })
         });
-      }catch(e){}
+        const data = await res.json();
+        if (data && data.success && data.user) {
+          state.balance = Number(data.user.balance);
+          updateHUD();
+          return data.user;
+        } else {
+          console.warn('saveGamePlay failed', data);
+          return null;
+        }
+      } catch(err){
+        console.error("saveGamePlay error", err);
+        return null;
+      }
     }
 
     function shuffleDeck(){
@@ -197,29 +214,22 @@
       $('#bet').textContent = `$${state.currentBet.toLocaleString()}`;
     }
 
-    function setLaneTotals(){
-      const p = handTotals(state.player).total;
-      const d = $('#dealerLane .card.back') ? handTotals([state.dealer[0]]).total : handTotals(state.dealer).total;
-      $('#playerTotal').textContent = p;
-      $('#dealerTotal').textContent = d;
-    }
-
-    function toast(msg){ const t=$('#toast'); t.textContent=msg; t.style.opacity=1; clearTimeout(t._timer); t._timer=setTimeout(()=> t.style.opacity=.6, 2200); }
-
-    function cardValue(card){ if(card.r==='A') return 11; if(['K','Q','J','10'].includes(card.r)) return 10; return parseInt(card.r,10); }
-
     function handTotals(hand){
       let total = 0; let aces = 0;
-      for(const c of hand){ const v = cardValue(c); if(c.r==='A') aces++; total += v; }
+      for(const c of hand){
+        if(c.r==='A'){ aces++; total += 11; }
+        else if(['K','Q','J','10'].includes(c.r)) total += 10;
+        else total += parseInt(c.r,10);
+      }
       while(total>21 && aces>0){ total -= 10; aces--; }
       return { total };
     }
 
-    function isBlackjack(hand){ return hand.length===2 && handTotals(hand).total===21; }
-
     function draw(){ if(state.deck.length===0) shuffleDeck(); return state.deck.pop(); }
 
-    function clearLane(lane){ $$('.card', lane).forEach(c=>c.remove()); }
+    function clearLane(lane){
+      $$('.card', lane).forEach(c=>c.remove());
+    }
 
     function makeCardEl(card, facedown=false){
       const el = document.createElement('div');
@@ -236,5 +246,190 @@
       return el;
     }
 
-    function setActions({deal=true, hit=false, stand=false, dbl=false}){
-      $('#deal').disabled = !deal; $('#hit').disabled = !hit; $('#stand').disabled = !stand; $('#double').disabled = !dbl
+    function setTotals(){
+      $('#playerTotal').textContent = handTotals(state.player).total;
+      // dealer shows first card total + "+"
+      $('#dealerTotal').textContent = (state.dealer[0] ? handTotals([state.dealer[0]]).total : 0) + (state.handInProgress ? "+" : "");
+    }
+
+    function toast(msg){ const t=$('#toast'); t.textContent=msg; t.style.opacity=1; clearTimeout(t._timer); t._timer=setTimeout(()=> t.style.opacity=.6, 2200); }
+
+    // --- Bet handling: Place / Clear ---
+    $('#placeBet').addEventListener('click', (e) => {
+      const v = parseInt($('#betInput').value,10) || 0;
+      if (v <= 0) { toast('Enter a positive bet'); return; }
+      if (v > state.balance) { toast('Not enough balance'); return; }
+      // Set current bet locally (do NOT call server yet). We'll call server when hand ends (to settle).
+      state.currentBet = v;
+      updateHUD();
+      toast(`Bet set: $${v}`);
+    });
+
+    $('#clearBet').addEventListener('click', (e) => {
+      state.currentBet = 0;
+      updateHUD();
+      toast('Bet cleared');
+    });
+
+    // --- Main game functions (async where await is used) ---
+
+    async function startHand(){
+      if(state.handInProgress) return;
+      const bet = state.currentBet;
+      if(!bet || bet <= 0) { toast('Place a bet first'); return; }
+      if(bet > state.balance) { toast('Insufficient balance'); return; }
+
+      // Show immediate deduction in UI for feedback, but server update happens at end (we'll sync from server result)
+      state.balance -= bet;
+      updateHUD();
+
+      // reset hands
+      state.player = [];
+      state.dealer = [];
+      state.doubled = false;
+      state.handInProgress = true;
+
+      // clear lanes
+      $('#playerLane').innerHTML = '<div class="lane-label">PLAYER</div><div class="lane-total" id="playerTotal">0</div>';
+      $('#dealerLane').innerHTML = '<div class="lane-label">DEALER</div><div class="lane-total" id="dealerTotal">0</div>';
+
+      // deal: two to player, two to dealer (one face down)
+      state.player.push(draw()); state.player.push(draw());
+      state.dealer.push(draw()); state.dealer.push(draw());
+      state.dealerHole = state.dealer[1];
+
+      $('#playerLane').appendChild(makeCardEl(state.player[0]));
+      $('#playerLane').appendChild(makeCardEl(state.player[1]));
+      $('#dealerLane').appendChild(makeCardEl(state.dealer[0]));
+      $('#dealerLane').appendChild(makeCardEl(state.dealer[1], true));
+
+      setTotals();
+
+      // enable actions
+      $('#hit').disabled = false;
+      $('#stand').disabled = false;
+      $('#double').disabled = false;
+
+      // if player blackjack, immediately finish
+      if(handTotals(state.player).total === 21){
+        await endHand();
+      }
+    }
+
+    async function playerHit(){
+      if(!state.handInProgress) return;
+      const c = draw();
+      state.player.push(c);
+      $('#playerLane').appendChild(makeCardEl(c));
+      setTotals();
+      const t = handTotals(state.player).total;
+      if(t >= 21) await endHand();
+    }
+
+    async function playerDouble(){
+      if(!state.handInProgress) return;
+      if(state.currentBet * 2 > (state.balance + state.currentBet)) { toast('Insufficient funds to double'); return; }
+      // doubling: double currentBet, draw one card, and stand
+      state.balance -= state.currentBet; // local deduct additional bet
+      state.currentBet = state.currentBet * 2;
+      state.doubled = true;
+      updateHUD();
+      const c = draw();
+      state.player.push(c);
+      $('#playerLane').appendChild(makeCardEl(c));
+      setTotals();
+      await endHand();
+    }
+
+    async function playerStand(){
+      if(!state.handInProgress) return;
+      await endHand();
+    }
+
+    async function endHand(){
+      // reveal dealer hole
+      if($('#dealerLane').lastChild && $('#dealerLane').lastChild.classList.contains('back')){
+        $('#dealerLane').lastChild.replaceWith(makeCardEl(state.dealerHole));
+      }
+
+      // dealer draws to 17
+      let dealerTotal = handTotals(state.dealer).total;
+      while(dealerTotal < 17){
+        const c = draw();
+        state.dealer.push(c);
+        $('#dealerLane').appendChild(makeCardEl(c));
+        dealerTotal = handTotals(state.dealer).total;
+      }
+
+      const playerTotal = handTotals(state.player).total;
+
+      // determine win
+      let win = 0;
+      if(playerTotal > 21){
+        win = 0;
+      } else if(dealerTotal > 21){
+        win = Math.round(state.currentBet * 2 * 100) / 100; // pay 1:1
+      } else if(playerTotal > dealerTotal){
+        win = Math.round(state.currentBet * 2 * 100) / 100;
+      } else if(playerTotal === dealerTotal){
+        // push: return bet
+        win = Math.round(state.currentBet * 1 * 100) / 100;
+      } else {
+        win = 0;
+      }
+
+      // mark result message
+      if(win === 0){
+        $('#banner').textContent = (playerTotal > 21) ? 'BUST! You lost.' : 'Dealer wins';
+      } else if(win === state.currentBet){
+        $('#banner').textContent = 'Push — bet returned';
+      } else {
+        $('#banner').textContent = `You win $${(win - state.currentBet).toFixed(2)}`;
+      }
+      $('#banner').classList.add('show');
+      setTimeout(()=> $('#banner').classList.remove('show'), 2000);
+
+      // send to backend once per round: bet amount and win amount
+      // backend will subtract 'bet' then add 'win' (server logic)
+      const saved = await saveGamePlay("Blackjack", state.currentBet, Math.round((win - state.currentBet) * 100) / 100 === 0 ? win - state.currentBet : win);
+      // NOTE: server expects win in absolute amount; here we send win (total returned, incl bet or win only)
+      // To match server logic: server subtracts 'bet' and then adds 'win' if win>0 (we send win = total payout).
+      // However to avoid confusion: we'll send win equal to just the profit (win - bet) if needed, but server expects full win amount.
+      // We'll instead send win as the net payout (if push: win = bet). The server code will treat win>0 as added funds.
+      // Here we send `win` (the amount returned to player).
+      if(saved && saved.balance !== undefined){
+        // server returned authoritative balance — sync
+        state.balance = Number(saved.balance);
+      } else {
+        // server error: refund locally
+        state.balance += state.currentBet; // revert
+        toast('Server error saving game — local balance restored');
+      }
+
+      // reset state
+      state.currentBet = 0;
+      state.handInProgress = false;
+      state.doubled = false;
+      updateHUD();
+      setTotals();
+
+      // disable action buttons
+      $('#hit').disabled = true;
+      $('#stand').disabled = true;
+      $('#double').disabled = true;
+    }
+
+    // --- wire UI buttons ---
+    $('#deal').addEventListener('click', startHand);
+    $('#hit').addEventListener('click', playerHit);
+    $('#stand').addEventListener('click', playerStand);
+    $('#double').addEventListener('click', playerDouble);
+    $('#newshoe').addEventListener('click', () => { shuffleDeck(); toast('Shuffled'); });
+
+    // initial
+    shuffleDeck();
+    loadUserAndBalance();
+    updateHUD();
+  </script>
+</body>
+</html>
