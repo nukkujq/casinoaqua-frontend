@@ -26,6 +26,20 @@
       box-shadow: 0 0 30px rgba(0,0,0,0.6);
       position: relative;
     }
+    .back-btn {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      padding: 6px 14px;
+      border: none;
+      border-radius: 8px;
+      background: #2f80ed;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 600;
+      box-shadow: 0 0 10px rgba(0,0,0,0.4);
+    }
+    .back-btn:hover { background:#2565c7; }
     .dice-logo {
       font-size: 64px;
       text-align: center;
@@ -106,6 +120,7 @@
 </head>
 <body>
   <div class="game-container">
+    <button class="back-btn" onclick="window.history.back()">← Back</button>
     <div class="dice-logo">🎲</div>
     <div class="top-row">
       <div class="balance">Balance: <span id="balance">0.00</span> credits</div>
@@ -175,14 +190,14 @@ async function loadUserAndBalance(){
   }catch(e){}
 }
 
-async function saveBalance(){
+async function saveBalanceToBackend(newBalance){
   try{
     const token = localStorage.getItem('token');
     if(!token) return;
     await fetch(`${SERVER_URL}/update-balance`, {
       method:'POST',
       headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${token}` },
-      body: JSON.stringify({ balance })
+      body: JSON.stringify({ balance: newBalance })
     });
   }catch(e){}
 }
@@ -262,7 +277,9 @@ async function roll(){
       resultDisplay.innerHTML = `<span class="animate-number">${rollVal.toFixed(2)}</span><div class="small">LOSE -${bet.toFixed(2)}</div>`;
     }
 
-    await saveBalance();
+    // tallennetaan backendille uusin saldo
+    await saveBalanceToBackend(balance);
+
     isRolling = false; 
     rollBtn.disabled = false; 
   }, 800);

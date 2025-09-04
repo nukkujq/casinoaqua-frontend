@@ -276,19 +276,26 @@ if (user) balanceEl.textContent = `$${user.balance}`;
     disc.style.transform=`rotate(${currentRotation}deg)`;
     await new Promise(r=>setTimeout(r,5250));
 
-    let winnings=0;
-    for(const b of bets){
-      if(b.type==='number'&&b.value===String(winning)){winnings+=b.amount*36;}
-      if(b.type==='color'&&b.value===winColor){
-        if(winColor==='green'){winnings+=b.amount*14;}
-        else{winnings+=b.amount*2;}
-      }
-    }
+// Voiton lasku
+let winnings = 0;
+for (const b of bets) {
+  if (b.type === "number" && b.value === String(winning)) winnings += b.amount * 36;
+  if (b.type === "color" && b.value === winColor) {
+    winnings += (winColor === "green") ? b.amount * 14 : b.amount * 2;
+  }
+}
 
-    if(winnings>0)balance+=winnings;
-    bets=[];
-    document.querySelectorAll('.bet').forEach(b=>{b.hidden=true;b.textContent='$0';});
-    updateStats();
+// ÄLÄ tee: if (winnings > 0) balance += winnings;
+bets = [];
+updateStats();
+
+// Settletallennus (bet = totalBet, win = winnings)
+const endUser = await saveGamePlay("Roulette", totalBet, winnings);
+if (endUser) {
+  balance = Number(endUser.balance) || balance;
+  balanceEl.textContent = "Balance: " + fmt(balance);
+}
+
 
     lastResultEl.innerHTML=`<span style="color:${winColor==='red'?'#ff8f83':winColor==='black'?'#ddd':'#9ee5b4'}">${winning}</span> (${winColor.toUpperCase()})`;
     const tag=document.createElement('span');

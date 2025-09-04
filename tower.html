@@ -214,32 +214,45 @@
       });
     }
 
-    async function gameOver(win){
-      gameActive=false;
-      revealAllTiles();
-      if(win){
-        const winnings=bet*payouts[difficulty][currentRow-1];
-        balance+=winnings; balanceEl.textContent=balance.toFixed(2);
-        statusEl.textContent=`You climbed all! Winnings: $${winnings.toFixed(2)}`;
-        await saveGamePlay("Tower", bet, winnings);
-      }else{
-        statusEl.textContent='Boom! You lost.';
-        await saveGamePlay("Tower", bet, 0);
-      }
-      betBtn.textContent='Bet';
-      diffEl.disabled=false;
+async function gameOver(win){
+  gameActive=false;
+  revealAllTiles();
+  if(win){
+    const winnings=bet*payouts[difficulty][currentRow-1];
+    statusEl.textContent=`You climbed all! Winnings: $${winnings.toFixed(2)}`;
+    const user = await saveGamePlay("Tower", bet, winnings);
+    if(user){
+      balance = user.balance;
+      balanceEl.textContent = balance.toFixed(2);
     }
+  }else{
+    statusEl.textContent='Boom! You lost.';
+    const user = await saveGamePlay("Tower", bet, 0);
+    if(user){
+      balance = user.balance;
+      balanceEl.textContent = balance.toFixed(2);
+    }
+  }
+  betBtn.textContent='Bet';
+  diffEl.disabled=false;
+}
 
-    async function cashOut(){
-      if(!gameActive||currentRow===0) return;
-      const mult=payouts[difficulty][currentRow-1];
-      const winnings=bet*mult; balance+=winnings; balanceEl.textContent=balance.toFixed(2);
-      statusEl.textContent=`Cashed out at ${mult.toFixed(2)}×`;
-      gameActive=false; betBtn.textContent='Bet';
-      diffEl.disabled=false;
-      revealAllTiles();
-      await saveGamePlay("Tower", bet, winnings);
-    }
+async function cashOut(){
+  if(!gameActive||currentRow===0) return;
+  const mult=payouts[difficulty][currentRow-1];
+  const winnings=bet*mult;
+  statusEl.textContent=`Cashed out at ${mult.toFixed(2)}×`;
+  gameActive=false; betBtn.textContent='Bet';
+  diffEl.disabled=false;
+  revealAllTiles();
+
+  const user = await saveGamePlay("Tower", bet, winnings);
+  if(user){
+    balance = user.balance;
+    balanceEl.textContent = balance.toFixed(2);
+  }
+}
+
 
     towerEl.addEventListener('click',e=>{ if(e.target.classList.contains('tile')) revealTile(e.target); });
     betBtn.addEventListener('click',()=>{ if(!gameActive) startGame(); else cashOut(); });
