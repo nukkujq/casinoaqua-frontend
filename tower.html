@@ -164,18 +164,21 @@
       if(currentRow<10) steps[currentRow]?.classList.add('active');
     }
 
-    async function startGame(){
-      bet=parseFloat(betEl.value);
-      if(!bet||bet<=0||bet>balance){alert('Invalid bet amount');return;}
-      balance-=bet; balanceEl.textContent=balance.toFixed(2);
-      currentRow=0; bombPositions=[]; gameActive=true;
-      betBtn.textContent='Cash Out';
-      diffEl.disabled=true;
-      statusEl.textContent='Game started! Pick a tile.';
-      multiplierEl.textContent='1.00×';
-      buildTower(); highlightLadder();
-      await saveGamePlay("Tower", bet, 0);
-    }
+async function startGame(){
+  bet=parseFloat(betEl.value);
+  if(!bet||bet<=0||bet>balance){alert('Invalid bet amount');return;}
+  balance-=bet; 
+  balanceEl.textContent=balance.toFixed(2);
+  currentRow=0; bombPositions=[]; gameActive=true;
+  betBtn.textContent='Cash Out';
+  diffEl.disabled=true;
+  statusEl.textContent='Game started! Pick a tile.';
+  multiplierEl.textContent='1.00×';
+  buildTower(); 
+  highlightLadder();
+  // ❌ poistettu: await saveGamePlay("Tower", bet, 0);
+}
+
 
     function revealTile(tile){
       if(!gameActive) return;

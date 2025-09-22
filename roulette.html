@@ -5,9 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Roulette</title>
 <style>
-
-
-  
   /* Back-nappi yläreunaan */
   .back-btn {
     position: fixed;
@@ -176,8 +173,6 @@
     }catch(e){}
   }
 
-
-
   function wedgePath(r1,r0,a0,a1){
     const rad=Math.PI/180,cx=270,cy=270;
     const x1=cx+r1*Math.cos(a0*rad),y1=cy+r1*Math.sin(a0*rad);
@@ -251,13 +246,11 @@
 
   clearBtn.addEventListener('click',async()=>{
     if(spinning)return;
-balance+=bets.reduce((s,b)=>s+b.amount,0);
-bets=[];
-document.querySelectorAll('.bet').forEach(b=>{b.hidden=true;b.textContent='$0';});
-updateStats();
-const user = await saveGamePlay("Roulette", 0, 0);
-if (user) balanceEl.textContent = `$${user.balance}`;
-
+    balance+=bets.reduce((s,b)=>s+b.amount,0);
+    bets=[];
+    document.querySelectorAll('.bet').forEach(b=>{b.hidden=true;b.textContent='$0';});
+    updateStats();
+    await saveGamePlay("Roulette", 0, 0);
   });
 
   function mod(n,m){return((n%m)+m)%m;}
@@ -276,72 +269,60 @@ if (user) balanceEl.textContent = `$${user.balance}`;
     disc.style.transform=`rotate(${currentRotation}deg)`;
     await new Promise(r=>setTimeout(r,5250));
 
-// Voiton lasku
-let winnings = 0;
-for (const b of bets) {
-  if (b.type === "number" && b.value === String(winning)) winnings += b.amount * 36;
-  if (b.type === "color" && b.value === winColor) {
-    winnings += (winColor === "green") ? b.amount * 14 : b.amount * 2;
-  }
-}
+    // Voiton lasku
+    let winnings = 0;
+    for (const b of bets) {
+      if (b.type === "number" && b.value === String(winning)) winnings += b.amount * 36;
+      if (b.type === "color" && b.value === winColor) {
+        winnings += (winColor === "green") ? b.amount * 14 : b.amount * 2;
+      }
+    }
 
-// ÄLÄ tee: if (winnings > 0) balance += winnings;
-bets = [];
-updateStats();
+    // Laske totalBet ennen kuin nollataan
+    const totalBet = bets.reduce((s,b)=>s+b.amount,0);
 
-// Settletallennus (bet = totalBet, win = winnings)
-const endUser = await saveGamePlay("Roulette", totalBet, winnings);
-if (endUser) {
-  balance = Number(endUser.balance) || balance;
-  balanceEl.textContent = "Balance: " + fmt(balance);
-}
+    bets = [];
+    updateStats();
 
+    // Settletallennus (bet = totalBet, win = winnings)
+    const endUser = await saveGamePlay("Roulette", totalBet, winnings);
+    if (endUser) {
+      balance = Number(endUser.balance) || balance;
+      updateStats();
+    }
 
-    lastResultEl.innerHTML=`<span style="color:${winColor==='red'?'#ff8f83':winColor==='black'?'#ddd':'#9ee5b4'}">${winning}</span> (${winColor.toUpperCase()})`;
-    const tag=document.createElement('span');
-    tag.className=`chip-mini ${winColor}`;
-    tag.textContent=`${winning} ${winColor.toUpperCase()}`;
-    historyEl.prepend(tag);
-
-const user = await saveGamePlay("Roulette", bets.reduce((s,b)=>s+b.amount,0), winnings);
-if (user) balanceEl.textContent = `$${user.balance}`;
+    lastResultEl.innerHTML=`<span style="color:${winColor==='red'?'#ff8f83':winColor==='black'?'#eee':'#9f9'}">${winning}</span>`;
+    const chip=document.createElement('div');
+    chip.className=`chip-mini ${winColor}`;
+    chip.textContent=winning;
+    historyEl.prepend(chip);
+    historyEl.childNodes.length>22&&historyEl.removeChild(historyEl.lastChild);
 
     spinning=false;
     clearBtn.disabled=false;
     spinBtn.disabled=false;
   });
 
-  buildWheel();buildNumbersGrid();
-  loadUserAndBalance();
-  updateStats();
-})();
-
-async function saveGamePlay(game, bet, win) {
-  try {
-    const token = localStorage.getItem("token");
-    if (!token) return null;
-
-    const res = await fetch(`${SERVER_URL}/play`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
-      },
-      body: JSON.stringify({ game, bet, win })
-    });
-
-    const data = await res.json();
-    if (data.success && data.user) {
-      return data.user; // sisältää päivitetyn saldon
-    }
-    return null;
-  } catch (err) {
-    console.error("saveGamePlay error", err);
+  async function saveGamePlay(game,bet,win){
+    try{
+      const token=localStorage.getItem("token");
+      if(!token)return null;
+      const res=await fetch(`${SERVER_URL}/gameplay`,{
+        method:"POST",
+        headers:{
+          "Content-Type":"application/json",
+          "Authorization":`Bearer ${token}`
+        },
+        body:JSON.stringify({game,bet,win})
+      });
+      const data=await res.json();
+      if(data.success)return data.user;
+    }catch(e){}
     return null;
   }
-}
 
-
+  buildWheel();buildNumbersGrid();loadUserAndBalance();
+})();
 </script>
 </body>
 </html>
