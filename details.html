@@ -6,7 +6,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;900&display=swap" rel="stylesheet">
-  <title>Kasinopelit - Ohjeet</title>
+  <title>Info</title>
 
   <!-- Bootstrap core CSS -->
   <link href="vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">
@@ -109,7 +109,7 @@
             <div class="main-button"><a href="coinflip.html">Pelaa nyt</a></div>
           </div>
         </div>
-
+<!---
         <div class="col-lg-12">
           <div class="item">
             <h4>Dice</h4>
@@ -133,7 +133,7 @@
             <div class="main-button"><a href="mines.html">Pelaa nyt</a></div>
           </div>
         </div>
-
+      -->
         <div class="col-lg-12">
           <div class="item">
             <h4>Slot Machine</h4>
@@ -170,7 +170,7 @@
             <div class="main-button"><a href="tower.html">Pelaa nyt</a></div>
           </div>
         </div>
-
+<!---
         <div class="col-lg-12">
           <div class="item">
             <h4>Plinko</h4>
@@ -182,7 +182,7 @@
             <div class="main-button"><a href="plinko.html">Pelaa nyt</a></div>
           </div>
         </div>
-
+      -->
                 <div class="col-lg-12">
           <div class="item">
             <h4>Dice</h4>
@@ -194,19 +194,7 @@
             <div class="main-button"><a href="dice.html">Pelaa nyt</a></div>
           </div>
         </div>
-
-                        <div class="col-lg-12">
-          <div class="item">
-            <h4>Dice</h4>
-            <ul>
-              <li>1. Valitse avattava case.</li>
-              <li>2. Maksa case ja avaa se.</li>
-              <li>3. Saat satunnaisen itemin, jonka voit pitää tai myydä.</li>
-            </ul>
-            <div class="main-button"><a href="dice.html">Pelaa nyt</a></div>
-          </div>
-        </div>
-
+      <!--
         <div class="col-lg-12">
           <div class="item">
             <h4>Limbo</h4>
@@ -218,7 +206,7 @@
             <div class="main-button"><a href="limbo.html">Pelaa nyt</a></div>
           </div>
         </div>
-
+      -->
         <div class="col-lg-12">
           <div class="item">
             <h4>Cross the Road</h4>
@@ -261,5 +249,26 @@
 
   <script src="vendor/jquery/jquery.min.js"></script>
   <script src="vendor/bootstrap/js/bootstrap.min.js"></script>
+
+
+<!-- 🔑 Lisätty: näytä käyttäjän nimi profiilikuvan sijaan, jos kirjautunut -->
+  <script>
+    const SERVER_URL = 'https://casinoaqua-server.onrender.com';
+    (async function setUserNameInNav(){
+      try{
+        const token = localStorage.getItem('token');
+        if(!token) return;
+        const res = await fetch(`${SERVER_URL}/me`, { headers: { 'Authorization': `Bearer ${token}` }});
+        const data = await res.json();
+        if(data && data.success && data.user && data.user.username){
+          const profileLink = document.querySelector('ul.nav li a[href="profile.html"]');
+          if(profileLink){
+            profileLink.textContent = data.user.username; // korvaa tekstillä ilman kuvaa
+          }
+        }
+      }catch(e){}
+    })();
+  </script>
+
 </body>
 </html>

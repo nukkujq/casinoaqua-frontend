@@ -106,7 +106,7 @@
               </div>
             </div>
 
-            <!-- Case Opener -->
+            <!-- Case Opener 
             <div class="col-lg-3 col-sm-6">
               <div class="item">
                 <div class="thumb">
@@ -116,7 +116,7 @@
                 <div class="main-button"><a href="caseopener.html">Pelaa</a></div>
               </div>
             </div>
-
+-->
             <!-- Dice -->
             <div class="col-lg-3 col-sm-6">
               <div class="item">
@@ -139,7 +139,7 @@
               </div>
             </div>
 
-            <!-- Mines -->
+            <!-- Mines 
             <div class="col-lg-3 col-sm-6">
               <div class="item">
                 <div class="thumb">
@@ -149,7 +149,7 @@
                 <div class="main-button"><a href="mines.html">Pelaa</a></div>
               </div>
             </div>
-
+          -->
             <!-- Coinflip -->
             <div class="col-lg-3 col-sm-6">
               <div class="item">
@@ -161,7 +161,7 @@
               </div>
             </div>
 
-            <!-- Plinko -->
+            <!-- Plinko 
             <div class="col-lg-3 col-sm-6">
               <div class="item">
                 <div class="thumb">
@@ -172,7 +172,7 @@
               </div>
             </div>
 
-            <!-- Limbo -->
+             Limbo 
             <div class="col-lg-3 col-sm-6">
               <div class="item">
                 <div class="thumb">
@@ -182,7 +182,7 @@
                 <div class="main-button"><a href="limbo.html">Pelaa</a></div>
               </div>
             </div>
-
+          -->
             <!-- Cross The Road -->
             <div class="col-lg-3 col-sm-6">
               <div class="item">
@@ -214,7 +214,7 @@
   <!-- Footer -->
   <footer>
     <div class="container">
-      <p>Copyright © 2036 CasinoAqua. All rights reserved.</p>
+      <p></p>
     </div>
   </footer>
 
@@ -222,5 +222,27 @@
   <script src="vendor/jquery/jquery.min.js"></script>
   <script src="vendor/bootstrap/js/bootstrap.min.js"></script>
   <script src="assets/js/custom.js"></script>
+
+<!-- 🔑 Lisätty: näytä käyttäjän nimi profiilikuvan sijaan, jos kirjautunut -->
+  <script>
+    const SERVER_URL = 'https://casinoaqua-server.onrender.com';
+    (async function setUserNameInNav(){
+      try{
+        const token = localStorage.getItem('token');
+        if(!token) return;
+        const res = await fetch(`${SERVER_URL}/me`, { headers: { 'Authorization': `Bearer ${token}` }});
+        const data = await res.json();
+        if(data && data.success && data.user && data.user.username){
+          const profileLink = document.querySelector('ul.nav li a[href="profile.html"]');
+          if(profileLink){
+            profileLink.textContent = data.user.username; // korvaa tekstillä ilman kuvaa
+          }
+        }
+      }catch(e){}
+    })();
+  </script>
+
+
+
 </body>
 </html>
