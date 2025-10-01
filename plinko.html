@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <title>Aquatic Plinko</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+  <script src="auth.js"></script>
   <style>
     :root {
       --ink:#0f172a;
@@ -21,24 +22,6 @@
       background: radial-gradient(1200px 600px at 50% -200px, rgba(255,255,255,0.08), transparent 60%),
                   linear-gradient(180deg, var(--sea1) 0%, var(--sea2) 55%, var(--ink) 100%);
     }
-    
-    /* Back button */
-    .back-btn {
-      position: fixed;
-      top: 12px;
-      left: 24px;
-      background: #203c34;
-      color: #fff;
-      padding: 8px 14px;
-      border-radius: 8px;
-      border: 1px solid #305248;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      z-index: 1000;
-    }
-    .back-btn:hover { background: #285448; }
-
     .foam {
       position: fixed;
       inset: 0;
@@ -88,12 +71,25 @@
       font-size: 12px;
       margin-left: 6px;
     }
+    #backBtn {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      padding: 8px 16px;
+      background: rgba(255,255,255,0.2);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      backdrop-filter: blur(6px);
+    }
+    #backBtn:hover {
+      background: rgba(255,255,255,0.3);
+    }
   </style>
 </head>
 <body>
-  <!-- Back button -->
-  <button class="back-btn" onclick="goBack()">← Back</button>
-
+  <button id="backBtn">Back</button>
   <h1>🌊 Aquatic Plinko <span class="tag">stronger center bias</span></h1>
   <div id="controls">
     Balance: $<span id="balance">0.00</span><br/>
@@ -109,10 +105,7 @@
   <div id="plinko"></div>
   <div class="foam" aria-hidden="true"></div>
 
-<!-- Include auth.js -->
-<script src="auth.js"></script>
-
-<script>
+  <script>
     const { Engine, Render, Runner, Bodies, World, Body, Events } = Matter;
 
     const SCALE = 0.65;
@@ -136,7 +129,6 @@
     let balance = 0;
     let lastResult = null;
     let currentRisk = document.getElementById("risk").value;
-    let dropping = false;
 
     const engine = Engine.create();
     engine.gravity.y = 0.8;
@@ -299,27 +291,6 @@
     engine._binsY = binsY;
     engine._binWidth = binWidth;
 
-    // Back button function
-    function goBack() {
-      window.location.href = 'index.html'; // Change this to your main games page
-    }
-
-    // Initialize balance from backend
-    async function loadUserAndBalance(){
-      try {
-        const user = await getCurrentUser();
-        if (user) {
-          balance = Number(user.balance) || 0;
-          document.getElementById("balance").innerText = balance.toFixed(2);
-        } else {
-          // If not logged in, redirect to login
-          window.location.href = 'index.html';
-        }
-      } catch(e) {
-        console.error('Error loading user balance:', e);
-      }
-    }
-
     document.getElementById("risk").addEventListener("change", (e) => {
       currentRisk = e.target.value;
     });
@@ -335,19 +306,23 @@
     }
 
     async function dropBall(count = 1) {
-      if (dropping) return;
-      dropping = true;
-      
       setCooldown();
 
       const bet = +document.getElementById("bet").value;
       if (bet <= 0 || bet * count > balance) {
-        dropping = false;
+        alert("Not enough balance or invalid bet!");
         return;
       }
-      
-      // Deduct bet from balance immediately
-      balance = +(balance - bet * count).toFixed(2);
+
+      // Vähennä panos käyttäjän saldosta backendissä
+      const result = await window.saveGamePlay("plinko", bet, 0);
+      if (!result) {
+        alert("Error placing bet!");
+        return;
+      }
+
+      // Päivitä saldo
+      balance = result.balance;
       document.getElementById("balance").innerText = balance.toFixed(2);
 
       const spawnY = 30 * SCALE;
@@ -369,17 +344,12 @@
       }
       World.add(engine.world, balls);
 
-      const watcher = setInterval(() => {
-        if (balls.length === 0) { 
-          clearInterval(watcher); 
-          dropping = false;
-          return; 
-        }
+      const watcher = setInterval(async () => {
+        if (balls.length === 0) { clearInterval(watcher); return; }
         for (let i = balls.length - 1; i >= 0; i--) {
           const b = balls[i];
           if (!engine.world.bodies.includes(b)) {
-            balls.splice(i,1); 
-            continue;
+            balls.splice(i,1); continue;
           }
           if (b.position.y > engine._binsY - 10 * SCALE) {
             const binIdx = Math.floor((b.position.x - BOARD.wallThickness) / engine._binWidth);
@@ -387,15 +357,13 @@
             const multiplier = getPayouts()[idx] ?? 0;
             const win = +(bet * multiplier).toFixed(2);
             
-            // Save game result to backend
-            saveGamePlay("plinko", bet, win).then(result => {
-              if (result) {
-                // Update balance from backend response
-                balance = result.balance;
-                document.getElementById("balance").innerText = balance.toFixed(2);
-              }
-            });
-
+            // Tallenna voitto backendissä
+            const result = await window.saveGamePlay("plinko", 0, win);
+            if (result) {
+              balance = result.balance;
+              document.getElementById("balance").innerText = balance.toFixed(2);
+            }
+            
             lastResult = { idx, multiplier, win };
             document.getElementById("lastResult").innerText = `Last: Bin ${idx + 1}, ×${multiplier}, Won ${win}`;
             if (win > 0) { try { winSound.play(); } catch {} }
@@ -421,8 +389,26 @@
       }
     });
 
-    // Initialize the game
-    loadUserAndBalance();
-</script>
+    // --- INITIALIZE BALANCE FROM BACKEND ---
+    async function initializeGame() {
+      const user = await window.getCurrentUser();
+      if (user) {
+        balance = user.balance;
+        document.getElementById("balance").innerText = balance.toFixed(2);
+      } else {
+        // Jos ei ole kirjautunut, ohjaa takaisin kirjautumissivulle
+        alert("Please log in to play");
+        window.location.href = "index.html"; // Vaihda tarvittaessa
+      }
+    }
+
+    // Back-napin toiminnallisuus
+    document.getElementById("backBtn").addEventListener("click", () => {
+      window.location.href = "index.html"; // Vaihda tarvittaessa
+    });
+
+    // Alusta peli kun sivu on ladattu
+    window.addEventListener("DOMContentLoaded", initializeGame);
+  </script>
 </body>
 </html>

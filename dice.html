@@ -239,9 +239,19 @@ async function roll(){
   if(bet <= 0){ alert('Enter a valid bet'); isRolling = false; rollBtn.disabled = false; return; }
   if(bet > balance){ alert('Not enough balance'); isRolling = false; rollBtn.disabled = false; return; }
 
-  // Deduct bet from balance immediately
-  balance -= bet;
+  // First deduct the bet from backend
+  const betResult = await saveGamePlay('dice', bet, 0);
+  if (!betResult) {
+    alert('Error placing bet!');
+    isRolling = false;
+    rollBtn.disabled = false;
+    return;
+  }
+  
+  // Update balance after bet deduction
+  balance = betResult.balance;
   balanceEl.textContent = format(balance);
+  
   resultDisplay.style.color = "#dce3e9";
   resultDisplay.innerHTML = `<span class="animate-number">...</span><div class="small">Rolling...</div>`;
   marker.style.opacity = 0;
@@ -268,24 +278,24 @@ async function roll(){
     if(win){
       const payout = bet * mult;
       winnings = payout - bet; // net winnings
-      animateBalance(balance, balance + payout);
-      balance += payout;
-      resultDisplay.style.color = '#7be495';
-      resultDisplay.innerHTML = `<span class="animate-number">${rollVal.toFixed(2)}</span><div class="small">WIN! +${winnings.toFixed(2)}</div>`;
+      
+      // Save win to backend
+      const result = await saveGamePlay('dice', 0, payout);
+      if (result) {
+        balance = result.balance;
+        balanceEl.textContent = format(balance);
+        resultDisplay.style.color = '#7be495';
+        resultDisplay.innerHTML = `<span class="animate-number">${rollVal.toFixed(2)}</span><div class="small">WIN! +${winnings.toFixed(2)}</div>`;
+      } else {
+        console.warn('Failed to save win to backend');
+        resultDisplay.style.color = '#7be495';
+        resultDisplay.innerHTML = `<span class="animate-number">${rollVal.toFixed(2)}</span><div class="small">WIN! +${winnings.toFixed(2)} (not saved)</div>`;
+      }
     } else {
       winnings = -bet; // net loss
+      // Loss is already recorded when we deducted the bet
       resultDisplay.style.color = '#ff7b88';
       resultDisplay.innerHTML = `<span class="animate-number">${rollVal.toFixed(2)}</span><div class="small">LOSE -${bet.toFixed(2)}</div>`;
-    }
-
-    // Save game result to backend using /play endpoint
-    const result = await saveGamePlay('dice', bet, win ? (bet * mult) : 0);
-    if (result) {
-      // Update balance from backend response
-      balance = result.balance;
-      balanceEl.textContent = format(balance);
-    } else {
-      console.warn('Failed to save game play to backend');
     }
 
     isRolling = false; 

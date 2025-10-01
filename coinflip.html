@@ -72,14 +72,22 @@
     .bubble.win{box-shadow: 0 0 0 2px rgba(53,224,161,.4) inset, 0 0 18px rgba(53,224,161,.35); color:#d8ffee}
     .bubble.lose{box-shadow: 0 0 0 2px rgba(255,107,107,.45) inset, 0 0 18px rgba(255,107,107,.35); color:#ffdede}
 
-    /* Login overlay */
-    .login-overlay{position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); display:flex; justify-content:center; align-items:center; z-index:1000;}
-    .login-form{background:#1a1a1a; padding:2rem; border-radius:12px; border:2px solid var(--accent); min-width:300px;}
-    .login-form h2{color:var(--accent); text-align:center; margin-bottom:1.5rem;}
-    .login-form input{width:100%; padding:10px; margin:8px 0; border-radius:6px; border:1px solid #444; background:#333; color:white;}
-    .login-form button{width:100%; padding:12px; margin:8px 0; border-radius:6px; border:none; background:var(--accent); color:black; font-weight:bold; cursor:pointer;}
-    .login-form .switch{text-align:center; margin-top:1rem; color:#aaa; cursor:pointer;}
-    .user-info{position:absolute; top:22px; right:22px; background:var(--panel); padding:8px 16px; border-radius:12px; border:1px solid rgba(255,255,255,.08); font-size:14px;}
+    /* Back button */
+    .back-btn {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      padding: 6px 14px;
+      border: none;
+      border-radius: 8px;
+      background: #2f80ed;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 600;
+      box-shadow: 0 0 10px rgba(0,0,0,0.4);
+      z-index: 100;
+    }
+    .back-btn:hover { background:#2565c7; }
 
     /* Loading spinner */
     .spinner{display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:100; color:var(--accent); font-size:18px;}
@@ -87,24 +95,8 @@
   </style>
 </head>
 <body>
-  <!-- Login Overlay -->
-  <div id="loginOverlay" class="login-overlay">
-    <div class="login-form">
-      <h2 id="loginTitle">Login</h2>
-      <input type="text" id="username" placeholder="Username">
-      <input type="password" id="password" placeholder="Password">
-      <button id="loginBtn">Login</button>
-      <button id="registerBtn" class="secondary" style="background:#444;color:white;">Register</button>
-      <div id="switchText" class="switch">Don't have an account? Register</div>
-      <div id="loginMessage" style="color:#ff6b6b;text-align:center;margin-top:1rem;"></div>
-    </div>
-  </div>
-
-  <!-- User Info -->
-  <div id="userInfo" class="user-info" style="display:none;">
-    <span id="usernameDisplay">—</span> | Balance: $<span id="balanceDisplay">0</span>
-    <button id="logoutBtn" style="margin-left:12px; background:#444; color:white; border:none; padding:4px 8px; border-radius:6px; cursor:pointer;">Logout</button>
-  </div>
+  <!-- Back button -->
+  <button class="back-btn" onclick="goBack()">← Back</button>
 
   <div class="ocean"><div class="wave w1"></div><div class="wave w2"></div><div class="wave w3"></div></div>
 
@@ -176,61 +168,12 @@
   <!-- Loading spinner -->
   <div id="spinner" class="spinner">Loading...</div>
 
+  <!-- Include auth.js -->
+  <script src="auth.js"></script>
+
   <script>
-    const SERVER_URL = 'https://casinoaqua-server.onrender.com';
     const MULTS=[1.92,3.84,7.68,15.36,30.72,61.44,122.88,245.76,491.52,983.04];
     const WIN_P=0.48;
-
-    // Auth functions
-    function getToken() {
-      return localStorage.getItem('token');
-    }
-
-    async function getCurrentUser() {
-      const token = getToken();
-      if (!token) return null;
-      try {
-        const res = await fetch(`${SERVER_URL}/me`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (data && data.success) {
-          localStorage.setItem('userBalance', String(data.user.balance || 0));
-          return data.user;
-        }
-      } catch (e) {
-        console.error('getCurrentUser error', e);
-      }
-      return null;
-    }
-
-    async function saveGamePlay(game, bet, win) {
-      const token = getToken();
-      if (!token) return null;
-      try {
-        const res = await fetch(`${SERVER_URL}/play`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({ game, bet, win })
-        });
-        const data = await res.json();
-        if (data && data.success) {
-          const newBalance = data.user.balance;
-          localStorage.setItem('userBalance', String(newBalance));
-          window.dispatchEvent(new CustomEvent('balanceUpdated', { detail: { balance: newBalance } }));
-          return data.user;
-        } else {
-          console.warn('saveGamePlay failed', data);
-          return null;
-        }
-      } catch (e) {
-        console.error('saveGamePlay error', e);
-        return null;
-      }
-    }
 
     // Game state
     const betInput = document.getElementById('bet');
@@ -255,8 +198,13 @@
     let currentUser = null;
     let userBalance = 0;
 
+    // Back button function
+    function goBack() {
+      window.location.href = 'index.html'; // Change this to your main games page
+    }
+
     function updateBalanceDisplay() {
-      document.getElementById('balanceDisplay').textContent = userBalance.toLocaleString();
+      // Balance is now handled by auth.js and backend
     }
 
     function renderLadder(){
@@ -335,7 +283,10 @@
         alert('Please enter a valid bet amount');
         return;
       }
-      if (betAmount > userBalance) {
+
+      // Check balance through backend
+      const user = await getCurrentUser();
+      if (!user || betAmount > user.balance) {
         alert('Insufficient balance');
         return;
       }
@@ -370,15 +321,11 @@
           renderLadder(); 
           updateStats();
           
-          // Save loss to backend
+          // Save loss to backend - deduct the bet amount
           const totalBet = betAmount;
           const totalWin = 0;
           showSpinner(true);
           const result = await saveGamePlay('coinflip', totalBet, totalWin);
-          if (result) {
-            userBalance = result.balance;
-            updateBalanceDisplay();
-          }
           showSpinner(false);
           
           active = false; 
@@ -397,13 +344,9 @@
       const betAmount = parseFloat(betInput.value) || 0;
       const winAmount = betAmount * MULTS[step - 1];
       
-      // Save win to backend
+      // Save win to backend - we only record the win amount, bet was already deducted
       showSpinner(true);
-      const result = await saveGamePlay('coinflip', betAmount, winAmount);
-      if (result) {
-        userBalance = result.balance;
-        updateBalanceDisplay();
-      }
+      const result = await saveGamePlay('coinflip', 0, winAmount);
       showSpinner(false);
 
       alert((auto ? 'Auto-cashed ' : 'Cashed ') + 'out at ×' + MULTS[step - 1].toFixed(2) + ' = ' + winAmount.toFixed(2));
@@ -435,7 +378,10 @@
           alert('Please enter a valid bet amount');
           return;
         }
-        if (betAmount > userBalance) {
+
+        // Check balance through backend
+        const user = await getCurrentUser();
+        if (!user || betAmount > user.balance) {
           alert('Insufficient balance');
           return;
         }
@@ -465,143 +411,22 @@
       }
     }
 
-    async function login(username, password) {
-      try {
-        showSpinner(true);
-        const res = await fetch(`${SERVER_URL}/login`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
-        });
-        const data = await res.json();
-        
-        if (data.success) {
-          localStorage.setItem('token', data.token);
-          currentUser = data.user;
-          userBalance = data.user.balance;
-          document.getElementById('usernameDisplay').textContent = data.user.username;
-          updateBalanceDisplay();
-          document.getElementById('userInfo').style.display = 'block';
-          document.getElementById('loginOverlay').style.display = 'none';
-          updateButton();
-        } else {
-          document.getElementById('loginMessage').textContent = data.message || 'Login failed';
-        }
-      } catch (error) {
-        console.error('Login error:', error);
-        document.getElementById('loginMessage').textContent = 'Connection error';
-      } finally {
-        showSpinner(false);
-      }
-    }
-
-    async function register(username, password) {
-      try {
-        showSpinner(true);
-        const res = await fetch(`${SERVER_URL}/register`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
-        });
-        const data = await res.json();
-        
-        if (data.success) {
-          localStorage.setItem('token', data.token);
-          currentUser = data.user;
-          userBalance = data.user.balance;
-          document.getElementById('usernameDisplay').textContent = data.user.username;
-          updateBalanceDisplay();
-          document.getElementById('userInfo').style.display = 'block';
-          document.getElementById('loginOverlay').style.display = 'none';
-          updateButton();
-        } else {
-          document.getElementById('loginMessage').textContent = data.message || 'Registration failed';
-        }
-      } catch (error) {
-        console.error('Registration error:', error);
-        document.getElementById('loginMessage').textContent = 'Connection error';
-      } finally {
-        showSpinner(false);
-      }
-    }
-
-    function logout() {
-      localStorage.removeItem('token');
-      localStorage.removeItem('userBalance');
-      currentUser = null;
-      userBalance = 0;
-      updateBalanceDisplay();
-      document.getElementById('userInfo').style.display = 'none';
-      document.getElementById('loginOverlay').style.display = 'flex';
-      updateButton();
-    }
-
     // Initialize game
-    function init(){
+    async function init(){
       // Check if user is already logged in
-      const token = getToken();
-      if (token) {
-        showSpinner(true);
-        getCurrentUser().then(user => {
-          if (user) {
-            currentUser = user;
-            userBalance = user.balance;
-            document.getElementById('usernameDisplay').textContent = user.username;
-            updateBalanceDisplay();
-            document.getElementById('userInfo').style.display = 'block';
-            document.getElementById('loginOverlay').style.display = 'none';
-            updateButton();
-          } else {
-            document.getElementById('loginOverlay').style.display = 'flex';
-          }
-          showSpinner(false);
-        });
+      const user = await getCurrentUser();
+      if (user) {
+        currentUser = user;
+        updateButton();
       } else {
-        document.getElementById('loginOverlay').style.display = 'flex';
+        // If not logged in, redirect to login
+        window.location.href = 'index.html';
       }
 
       renderLadder(); 
       updateStats(); 
       updateButton(); 
       enableSideTiles(false);
-
-      // Login/Register handlers
-      document.getElementById('loginBtn').addEventListener('click', () => {
-        const username = document.getElementById('username').value.trim();
-        const password = document.getElementById('password').value.trim();
-        if (username && password) {
-          login(username, password);
-        } else {
-          document.getElementById('loginMessage').textContent = 'Please fill all fields';
-        }
-      });
-
-      document.getElementById('registerBtn').addEventListener('click', () => {
-        const username = document.getElementById('username').value.trim();
-        const password = document.getElementById('password').value.trim();
-        if (username && password) {
-          register(username, password);
-        } else {
-          document.getElementById('loginMessage').textContent = 'Please fill all fields';
-        }
-      });
-
-      document.getElementById('switchText').addEventListener('click', () => {
-        const isLogin = document.getElementById('loginTitle').textContent === 'Login';
-        if (isLogin) {
-          document.getElementById('loginTitle').textContent = 'Register';
-          document.getElementById('loginBtn').style.display = 'none';
-          document.getElementById('registerBtn').style.display = 'block';
-          document.getElementById('switchText').textContent = 'Already have an account? Login';
-        } else {
-          document.getElementById('loginTitle').textContent = 'Login';
-          document.getElementById('loginBtn').style.display = 'block';
-          document.getElementById('registerBtn').style.display = 'none';
-          document.getElementById('switchText').textContent = 'Don\'t have an account? Register';
-        }
-      });
-
-      document.getElementById('logoutBtn').addEventListener('click', logout);
 
       // Chip handlers
       document.querySelectorAll('.chip').forEach(chip => {
