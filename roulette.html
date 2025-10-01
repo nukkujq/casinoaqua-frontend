@@ -1,29 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Roulette</title>
 <style>
-  /* Back-nappi yläreunaan */
-  .back-btn {
-    position: fixed;
-    top: 12px;
-    left: 24px;
-    background: #203c34;
-    color: #fff;
-    padding: 8px 14px;
-    border-radius: 8px;
-    border: 1px solid #305248;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    z-index: 1000;
-  }
-  .back-btn:hover {
-    background: #285448;
-  }
-
   :root{
     --felt:#0b1f1b;
     --felt-2:#0f2c25;
@@ -34,7 +15,7 @@
     --shadow:0 14px 40px rgba(0,0,0,.50);
   }
   html,body{height:100%;background:radial-gradient(1200px 750px at 50% -200px,#173d33 0%,#0b1f1b 55%,#081813 100%); font-family: Inter, system-ui, Arial, sans-serif; color:#eee; margin:0}
-  .app{max-width:1220px;margin:0 auto;padding:60px 20px 40px;}
+  .app{max-width:1220px;margin:0 auto;padding:22px 20px 40px;}
   h1{letter-spacing:.08em;margin:0 0 14px;font-weight:900;color:var(--gold);text-shadow:0 2px 8px rgba(0,0,0,.35); display:flex; align-items:center; gap:10px}
   h1:before{content:"🎰"}
 
@@ -64,7 +45,7 @@
   .controls{display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap}
   .btn{cursor:pointer; border:none; padding:12px 18px; border-radius:12px; font-weight:800; letter-spacing:.04em; background:linear-gradient(180deg, #f3d588, #e0b64c); color:#1a1200; box-shadow:0 10px 26px rgba(0,0,0,.45);} 
   .btn.secondary{background:linear-gradient(180deg,#203c34,#122821); color:#e7e7e7; border:1px solid #305248}
-  .btn:disabled{opacity:0.4; cursor:not-allowed;}
+  .btn:disabled{opacity:0.4; cursor:not-allowed;} /* transparent effect when disabled */
 
   .customBet{padding:8px; border-radius:8px; border:1px solid #305248; width:100px; background:#0f2c25; color:#fff; font-size:14px;}
 
@@ -91,13 +72,18 @@
   .chip-mini.green{background:#0f4d2a}
 
   .footer{opacity:.75; margin-top:16px; font-size:12px}
+  
+  .back-btn-container { margin-bottom: 16px; }
+  .back-btn { background: linear-gradient(180deg, #203c34, #122821); color: #e7e7e7; border: 1px solid #305248; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+  .back-btn:hover { background: linear-gradient(180deg, #284c42, #17332a); }
 </style>
 </head>
 <body>
-<!-- Back button -->
-<button class="back-btn" onclick="history.back()">← Back</button>
-
 <div class="app">
+  <div class="back-btn-container">
+    <button class="back-btn" onclick="goBack()">← Back to Games</button>
+  </div>
+  
   <h1>Roulette</h1>
   <div class="topbar">
     <div class="stat">Balance: <b id="balance">$0</b></div>
@@ -142,10 +128,11 @@
   </div>
 </div>
 
+<!-- Include auth.js -->
+<script src="auth.js"></script>
+
 <script>
 (() => {
-  const SERVER_URL = 'https://casinoaqua-server.onrender.com';
-
   const sequenceUS=['0','28','9','26','30','11','7','20','32','17','5','22','34','15','3','24','36','13','1','00','27','10','25','29','12','8','19','31','18','6','21','33','16','4','23','35','14','2'];
   const pocketAngle=360/sequenceUS.length;
   const redSet=new Set(['1','3','5','7','9','12','14','16','18','19','21','23','25','27','30','32','34','36']);
@@ -157,101 +144,32 @@
 
   let balance=0,bets=[],currentRotation=0,spinning=false;
 
+  // Initialize balance from backend
+  async function initBalance() {
+    const user = await getCurrentUser();
+    if (user) {
+      balance = user.balance;
+      updateStats();
+    } else {
+      // If not logged in, redirect to login
+      window.location.href = 'index.html';
+    }
+  }
+
   const fmt=v=>`$${v.toLocaleString()}`;
   const updateStats=()=>{balanceEl.textContent=fmt(balance);currentBetEl.textContent=fmt(bets.reduce((s,b)=>s+b.amount,0));};
 
-  async function loadUserAndBalance(){
-    try{
-      const token = localStorage.getItem('token');
-      if(!token) return;
-      const res = await fetch(`${SERVER_URL}/me`, { headers: { 'Authorization': `Bearer ${token}` }});
-      const data = await res.json();
-      if(data && data.success){
-        balance = Number(data.user.balance)||0;
-        updateStats();
-      }
-    }catch(e){}
-  }
+  function wedgePath(r1,r0,a0,a1){const rad=Math.PI/180,cx=270,cy=270;const x1=cx+r1*Math.cos(a0*rad),y1=cy+r1*Math.sin(a0*rad);const x2=cx+r1*Math.cos(a1*rad),y2=cy+r1*Math.sin(a1*rad);const x3=cx+r0*Math.cos(a1*rad),y3=cy+r0*Math.sin(a1*rad);const x4=cx+r0*Math.cos(a0*rad),y4=cy+r0*Math.sin(a0*rad);const large=(a1-a0)>180?1:0;return`M ${x1} ${y1} A ${r1} ${r1} 0 ${large} 1 ${x2} ${y2} L ${x3} ${y3} A ${r0} ${r0} 0 ${large} 0 ${x4} ${y4} Z`;}
 
-  function wedgePath(r1,r0,a0,a1){
-    const rad=Math.PI/180,cx=270,cy=270;
-    const x1=cx+r1*Math.cos(a0*rad),y1=cy+r1*Math.sin(a0*rad);
-    const x2=cx+r1*Math.cos(a1*rad),y2=cy+r1*Math.sin(a1*rad);
-    const x3=cx+r0*Math.cos(a1*rad),y3=cy+r0*Math.sin(a1*rad);
-    const x4=cx+r0*Math.cos(a0*rad),y4=cy+r0*Math.sin(a0*rad);
-    const large=(a1-a0)>180?1:0;
-    return`M ${x1} ${y1} A ${r1} ${r1} 0 ${large} 1 ${x2} ${y2} L ${x3} ${y3} A ${r0} ${r0} 0 ${large} 0 ${x4} ${y4} Z`;
-  }
+  function buildWheel(){wedgesLayer.innerHTML='';numbersLayer.innerHTML='';let start=-90;sequenceUS.forEach((n,i)=>{const a0=start+i*pocketAngle,a1=a0+pocketAngle,mid=(a0+a1)/2;const wedge=document.createElementNS('http://www.w3.org/2000/svg','path');wedge.setAttribute('d',wedgePath(250,200,a0,a1));wedge.setAttribute('class',`wedge ${colorOf(n)}`);wedgesLayer.appendChild(wedge);const txt=document.createElementNS('http://www.w3.org/2000/svg','text');txt.setAttribute('x',270+226*Math.cos(mid*Math.PI/180));txt.setAttribute('y',270+226*Math.sin(mid*Math.PI/180));txt.setAttribute('transform',`rotate(${mid+90} ${270+226*Math.cos(mid*Math.PI/180)} ${270+226*Math.sin(mid*Math.PI/180)})`);txt.setAttribute('class',`num ${colorOf(n)}`);txt.textContent=n;numbersLayer.appendChild(txt);});}
 
-  function buildWheel(){
-    wedgesLayer.innerHTML='';numbersLayer.innerHTML='';
-    let start=-90;
-    sequenceUS.forEach((n,i)=>{
-      const a0=start+i*pocketAngle,a1=a0+pocketAngle,mid=(a0+a1)/2;
-      const wedge=document.createElementNS('http://www.w3.org/2000/svg','path');
-      wedge.setAttribute('d',wedgePath(250,200,a0,a1));
-      wedge.setAttribute('class',`wedge ${colorOf(n)}`);
-      wedgesLayer.appendChild(wedge);
-      const txt=document.createElementNS('http://www.w3.org/2000/svg','text');
-      txt.setAttribute('x',270+226*Math.cos(mid*Math.PI/180));
-      txt.setAttribute('y',270+226*Math.sin(mid*Math.PI/180));
-      txt.setAttribute('transform',`rotate(${mid+90} ${270+226*Math.cos(mid*Math.PI/180)} ${270+226*Math.sin(mid*Math.PI/180)})`);
-      txt.setAttribute('class',`num ${colorOf(n)}`);
-      txt.textContent=n;
-      numbersLayer.appendChild(txt);
-    });
-  }
+  function buildNumbersGrid(){for(let n=1;n<=36;n++)addNum(n);addNum('0');addNum('00');}
+  function addNum(n){const el=document.createElement('div');el.className=`num ${colorOf(String(n))}`;el.textContent=n;const badge=document.createElement('div');badge.className='bet';badge.hidden=true;badge.textContent='$0';el.appendChild(badge);el.dataset.number=String(n);el.addEventListener('click',()=>{if(spinning)return;placeBet({type:'number',value:String(n),badge});});numbersGrid.appendChild(el);}
 
-  function buildNumbersGrid(){
-    for(let n=1;n<=36;n++)addNum(n);
-    addNum('0');addNum('00');
-  }
+  function placeBet(ref){if(spinning)return;const amount=parseInt(betInput.value)||0;if(amount<=0||balance<amount)return;balance-=amount;let b=bets.find(x=>x.type===ref.type&&x.value===ref.value);if(!b){b={...ref,amount:0};bets.push(b);}b.amount+=amount;if(b.badge){b.badge.hidden=false;b.badge.textContent=fmt(b.amount);}updateStats();}
 
-  function addNum(n){
-    const el=document.createElement('div');
-    el.className=`num ${colorOf(String(n))}`;
-    el.textContent=n;
-    const badge=document.createElement('div');
-    badge.className='bet';
-    badge.hidden=true;
-    badge.textContent='$0';
-    el.appendChild(badge);
-    el.dataset.number=String(n);
-    el.addEventListener('click',()=>{
-      if(spinning)return;
-      placeBet({type:'number',value:String(n),badge});
-    });
-    numbersGrid.appendChild(el);
-  }
-
-  function placeBet(ref){
-    if(spinning)return;
-    const amount=parseInt(betInput.value)||0;
-    if(amount<=0||balance<amount)return;
-    balance-=amount;
-    let b=bets.find(x=>x.type===ref.type&&x.value===ref.value);
-    if(!b){b={...ref,amount:0};bets.push(b);}
-    b.amount+=amount;
-    if(b.badge){b.badge.hidden=false;b.badge.textContent=fmt(b.amount);}
-    updateStats();
-  }
-
-  document.querySelectorAll('.cell[data-color]').forEach(el=>{
-    const badge=el.querySelector('.bet');
-    el.addEventListener('click',()=>{
-      if(spinning)return;
-      placeBet({type:'color',value:el.dataset.color,badge});
-    });
-  });
-
-  clearBtn.addEventListener('click',async()=>{
-    if(spinning)return;
-    balance+=bets.reduce((s,b)=>s+b.amount,0);
-    bets=[];
-    document.querySelectorAll('.bet').forEach(b=>{b.hidden=true;b.textContent='$0';});
-    updateStats();
-    await saveGamePlay("Roulette", 0, 0);
-  });
+  document.querySelectorAll('.cell[data-color]').forEach(el=>{const badge=el.querySelector('.bet');el.addEventListener('click',()=>{if(spinning)return;placeBet({type:'color',value:el.dataset.color,badge});});});
+  clearBtn.addEventListener('click',()=>{if(spinning)return;balance+=bets.reduce((s,b)=>s+b.amount,0);bets=[];document.querySelectorAll('.bet').forEach(b=>{b.hidden=true;b.textContent='$0';});updateStats();});
 
   function mod(n,m){return((n%m)+m)%m;}
 
@@ -267,61 +185,60 @@
     const delta=mod((-90-(baseMid+currentRotation)),360);
     currentRotation+=delta+6*360;
     disc.style.transform=`rotate(${currentRotation}deg)`;
+    
     await new Promise(r=>setTimeout(r,5250));
 
-    // Voiton lasku
-    let winnings = 0;
-    for (const b of bets) {
-      if (b.type === "number" && b.value === String(winning)) winnings += b.amount * 36;
-      if (b.type === "color" && b.value === winColor) {
-        winnings += (winColor === "green") ? b.amount * 14 : b.amount * 2;
+    let winnings=0;
+    let totalBet = 0;
+    
+    for(const b of bets){
+      totalBet += b.amount;
+      
+      if(b.type==='number'&&b.value===String(winning)){
+        winnings+=b.amount*36; // straight number
+      }
+      if(b.type==='color'&&b.value===winColor){
+        if(winColor==='green'){
+          winnings+=b.amount*14; // green special payout
+        }else{
+          winnings+=b.amount*2; // red/black normal
+        }
       }
     }
 
-    // Laske totalBet ennen kuin nollataan
-    const totalBet = bets.reduce((s,b)=>s+b.amount,0);
-
-    bets = [];
-    updateStats();
-
-    // Settletallennus (bet = totalBet, win = winnings)
-    const endUser = await saveGamePlay("Roulette", totalBet, winnings);
-    if (endUser) {
-      balance = Number(endUser.balance) || balance;
-      updateStats();
+    // Save game result to backend
+    const result = await saveGamePlay('roulette', totalBet, winnings);
+    if (result) {
+      balance = result.balance;
+    } else {
+      // If save failed, revert balance locally
+      balance += winnings;
     }
 
-    lastResultEl.innerHTML=`<span style="color:${winColor==='red'?'#ff8f83':winColor==='black'?'#eee':'#9f9'}">${winning}</span>`;
-    const chip=document.createElement('div');
-    chip.className=`chip-mini ${winColor}`;
-    chip.textContent=winning;
-    historyEl.prepend(chip);
-    historyEl.childNodes.length>22&&historyEl.removeChild(historyEl.lastChild);
+    bets=[];
+    document.querySelectorAll('.bet').forEach(b=>{b.hidden=true;b.textContent='$0';});
+    updateStats();
+
+    lastResultEl.innerHTML=`<span style="color:${winColor==='red'?'#ff8f83':winColor==='black'?'#ddd':'#9ee5b4'}">${winning}</span> (${winColor.toUpperCase()})`;
+    const tag=document.createElement('span');
+    tag.className=`chip-mini ${winColor}`;
+    tag.textContent=`${winning} ${winColor.toUpperCase()}`;
+    historyEl.prepend(tag);
 
     spinning=false;
     clearBtn.disabled=false;
     spinBtn.disabled=false;
   });
 
-  async function saveGamePlay(game,bet,win){
-    try{
-      const token=localStorage.getItem("token");
-      if(!token)return null;
-      const res=await fetch(`${SERVER_URL}/gameplay`,{
-        method:"POST",
-        headers:{
-          "Content-Type":"application/json",
-          "Authorization":`Bearer ${token}`
-        },
-        body:JSON.stringify({game,bet,win})
-      });
-      const data=await res.json();
-      if(data.success)return data.user;
-    }catch(e){}
-    return null;
-  }
+  // Back button function
+  window.goBack = function() {
+    window.location.href = 'index.html'; // Change this to your main games page
+  };
 
-  buildWheel();buildNumbersGrid();loadUserAndBalance();
+  // Initialize the game
+  buildWheel();
+  buildNumbersGrid();
+  initBalance();
 })();
 </script>
 </body>
