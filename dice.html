@@ -120,7 +120,7 @@
 </head>
 <body>
   <div class="game-container">
-    <button class="back-btn" onclick="window.history.back()">← Back</button>
+    <button class="back-btn" onclick="goBack()">← Back</button>
     <div class="dice-logo">🎲</div>
     <div class="top-row">
       <div class="balance">Balance: <span id="balance">0.00</span> credits</div>
@@ -156,13 +156,14 @@
     <button class="roll-btn" id="rollBtn" onclick="roll()">Roll</button>
   </div>
 
-<script>
-const SERVER_URL = 'https://casinoaqua-server.onrender.com';
+<!-- Include auth.js -->
+<script src="auth.js"></script>
 
-let balance = 0.00;
+<script>
 const houseEdge = 0.01; 
 let mode = "under"; 
 let isRolling = false; 
+let balance = 0.00;
 
 const balanceEl = document.getElementById('balance');
 const targetEl = document.getElementById('rollTarget');
@@ -177,29 +178,20 @@ const rollBtn = document.getElementById('rollBtn');
 
 function format(n){ return Number(n).toFixed(2); }
 
+// Initialize balance from backend
 async function loadUserAndBalance(){
-  try{
-    const token = localStorage.getItem('token');
-    if(!token) return;
-    const res = await fetch(`${SERVER_URL}/me`, { headers: { 'Authorization': `Bearer ${token}` }});
-    const data = await res.json();
-    if(data && data.success){
-      balance = Number(data.user.balance) || 0;
+  try {
+    const user = await getCurrentUser();
+    if (user) {
+      balance = Number(user.balance) || 0;
       balanceEl.textContent = format(balance);
+    } else {
+      // If not logged in, redirect to login
+      window.location.href = 'index.html';
     }
-  }catch(e){}
-}
-
-async function saveBalanceToBackend(newBalance){
-  try{
-    const token = localStorage.getItem('token');
-    if(!token) return;
-    await fetch(`${SERVER_URL}/update-balance`, {
-      method:'POST',
-      headers:{ 'Content-Type':'application/json', 'Authorization':`Bearer ${token}` },
-      body: JSON.stringify({ balance: newBalance })
-    });
-  }catch(e){}
+  } catch(e) {
+    console.error('Error loading user balance:', e);
+  }
 }
 
 function setMode(m){
@@ -233,6 +225,11 @@ function animateBalance(from, to){
   }, 25);
 }
 
+// Back button function
+function goBack() {
+  window.location.href = 'index.html'; // Change this to your main games page
+}
+
 async function roll(){
   if(isRolling) return; 
   isRolling = true;
@@ -242,6 +239,7 @@ async function roll(){
   if(bet <= 0){ alert('Enter a valid bet'); isRolling = false; rollBtn.disabled = false; return; }
   if(bet > balance){ alert('Not enough balance'); isRolling = false; rollBtn.disabled = false; return; }
 
+  // Deduct bet from balance immediately
   balance -= bet;
   balanceEl.textContent = format(balance);
   resultDisplay.style.color = "#dce3e9";
@@ -265,33 +263,46 @@ async function roll(){
     marker.style.left = pos + "px";
     marker.style.opacity = 1;
 
+    let winnings = 0;
+    
     if(win){
       const payout = bet * mult;
-      const profit = payout - bet;
+      winnings = payout - bet; // net winnings
       animateBalance(balance, balance + payout);
       balance += payout;
       resultDisplay.style.color = '#7be495';
-      resultDisplay.innerHTML = `<span class="animate-number">${rollVal.toFixed(2)}</span><div class="small">WIN! +${profit.toFixed(2)}</div>`;
+      resultDisplay.innerHTML = `<span class="animate-number">${rollVal.toFixed(2)}</span><div class="small">WIN! +${winnings.toFixed(2)}</div>`;
     } else {
+      winnings = -bet; // net loss
       resultDisplay.style.color = '#ff7b88';
       resultDisplay.innerHTML = `<span class="animate-number">${rollVal.toFixed(2)}</span><div class="small">LOSE -${bet.toFixed(2)}</div>`;
     }
 
-    // tallennetaan backendille uusin saldo
-    await saveBalanceToBackend(balance);
+    // Save game result to backend using /play endpoint
+    const result = await saveGamePlay('dice', bet, win ? (bet * mult) : 0);
+    if (result) {
+      // Update balance from backend response
+      balance = result.balance;
+      balanceEl.textContent = format(balance);
+    } else {
+      console.warn('Failed to save game play to backend');
+    }
 
     isRolling = false; 
     rollBtn.disabled = false; 
   }, 800);
 }
 
+// Initialize the game
 updateSlider();
 loadUserAndBalance();
 
 window.addEventListener('keydown', (e)=>{
   if(e.code === 'Space'){
     e.preventDefault();
-    document.getElementById('rollBtn').click();
+    if (!isRolling) {
+      document.getElementById('rollBtn').click();
+    }
   }
 });
 </script>

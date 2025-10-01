@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Baccarat – Realistic Table</title>
+<style>
+  :root{--felt:#0c5a3a;--gold:#e7c76b;--ivory:#f6f3ea;}
+  html,body{height:100%}
+  body{
+    margin:0;height:100%;font-family:system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    background:radial-gradient(1200px 700px at 50% 20%,#1b1f24,#07090b 70%);color:#eee;overflow:hidden;
+  }
+
+  .table-wrap{position:relative;width:min(1200px,96vw);height:min(680px,90vh);margin:2vh auto;perspective:1200px;}
+  .table{
+    position:absolute;inset:0;border-radius:48px;border:12px solid #623e24;overflow:hidden;
+    background:radial-gradient(160% 100% at 50% -10%,#127e50,var(--felt));transform:rotateX(14deg);
+    box-shadow:0 40px 120px rgba(0,0,0,.55);
+  }
+
+  .title{position:absolute;top:7%;left:50%;transform:translateX(-50%);font-weight:800;letter-spacing:.3rem;
+    font-size:clamp(18px,2.6vw,28px);color:var(--gold);}
+
+  /* banner under title */
+  .banner{position:absolute;top:15%;left:50%;transform:translateX(-50%);padding:10px 16px;border-radius:12px;
+    font-weight:900;background:rgba(0,0,0,.65);color:var(--gold);display:none;z-index:30;transition:opacity .9s ease,transform .9s ease;}
+  .banner.show{display:block;opacity:1; transform:translateX(-50%) translateY(0);}
+  .banner.fadeout{opacity:0; transform:translateX(-50%) translateY(-8px);}
+
+  .hud{position:absolute;top:6%;left:3%;display:flex;gap:12px;z-index:30;}
+  .bank{padding:10px 14px;background:rgba(0,0,0,.35);border-radius:12px;}
+  .bank strong{color:var(--gold);}
+
+  .controls{position:absolute;right:3%;top:6%;display:flex;gap:8px;z-index:30;}
+  .btn{padding:10px 14px;border-radius:12px;border:0;cursor:pointer;font-weight:700;background:linear-gradient(to bottom,#2b7a4a,#205c38);color:#fff;}
+  .btn.secondary{background:linear-gradient(to bottom,#3a3f46,#292e33)}
+  .btn.disabled{opacity:.5;pointer-events:none}
+
+  .hand-area{position:absolute;left:50%;top:36%;width:80%;transform:translateX(-50%);display:flex;justify-content:space-between;z-index:15;}
+  .lane{width:48%;min-height:140px;display:flex;gap:18px;align-items:center;padding:8px 0;position:relative;}
+  .lane-label{position:absolute;top:-30px;left:6px;color:var(--gold);font-weight:800;white-space:nowrap;}
+  .lane-label span{margin-left:8px;color:#fff;font-weight:900}
+
+  /* cards styling */
+  .card{width:92px;height:132px;border-radius:12px;background:linear-gradient(145deg,#fff,#e8e8e8);
+    box-shadow:0 6px 18px rgba(0,0,0,.6);position:relative;border:1px solid #ccc;transform:translateY(-80px) scale(.85);
+    opacity:0;transition:all .35s ease; margin-right:8px;}
+  .card.show{transform:translateY(0) scale(1);opacity:1}
+  .card.fadeout{opacity:0;transform:translateY(40px) scale(.9);transition:all .6s ease}
+  .card .face{position:absolute;inset:6px;border-radius:10px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:auto 1fr auto;}
+  .suit{grid-column:span 2;display:flex;justify-content:center;align-items:center;font-size:52px;opacity:.9}
+  .corner{display:flex;gap:4px;align-items:center}
+  .corner.right{justify-self:end;transform:rotate(180deg)}
+  .red{color:#c62828}.black{color:#111}
+
+  .spots{position:absolute;bottom:18%;left:50%;transform:translateX(-50%);display:flex;gap:min(24px,3vw);align-items:end;z-index:20;}
+  .spot{
+    width:clamp(160px,22vw,260px);height:120px;border-radius:24px;border:2px dashed rgba(255,255,255,.16);
+    display:flex;flex-direction:column;align-items:center;justify-content:flex-start;color:#fff;text-align:center;
+    background:linear-gradient(to bottom,rgba(255,255,255,.03),rgba(0,0,0,.08) 30%,rgba(255,255,255,.02));position:relative;overflow:hidden;
+  }
+  .spot h3{margin:4px 0;font-size:clamp(14px,1.8vw,18px);color:var(--gold);pointer-events:none}
+  .spot small{font-size:12px;color:#aaa;pointer-events:none}
+  /* single chip display per spot - smaller */
+  .chips-stack{position:absolute;bottom:30px;display:flex;justify-content:center;align-items:center;width:100%;height:36px;}
+  .chips-stack .stack-chip{width:34px;height:34px;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#fff;user-select:none;pointer-events:none;background:#1565c0;}
+
+  /* bet total shown at bottom (centered) */
+  .bet-total{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);font-weight:800;color:#fff;background:rgba(0,0,0,.45);padding:4px 8px;border-radius:10px;font-size:13px;pointer-events:none;z-index:25}
+
+  .bottom-ui{position:absolute;bottom:3%;left:50%;transform:translateX(-50%);display:flex;gap:14px;align-items:center;z-index:30}
+  .chips{display:flex;gap:12px}
+  .chip{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff;cursor:grab;user-select:none}
+  .chip[data-value="10"]{background:#1565c0} .chip[data-value="50"]{background:#2e7d32} .chip[data-value="100"]{background:#f9a825}
+  .chip[data-value="500"]{background:#c62828} .chip[data-value="1000"]{background:#6a1b9a}
+  .flying-chip{position:absolute;pointer-events:none;transition:all .4s ease;z-index:50}
+
+  .toast{position:absolute;bottom:12px;left:12px;padding:8px 12px;background:rgba(0,0,0,.6);border-radius:10px;font-size:13px;z-index:40}
+
+  /* Loading spinner */
+  .spinner{display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:100;color:var(--gold);font-size:18px;}
+  .spinner.active{display:block;}
+
+  /* Login overlay */
+  .login-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;justify-content:center;align-items:center;z-index:1000;}
+  .login-form{background:#1a1a1a;padding:2rem;border-radius:12px;border:2px solid var(--gold);min-width:300px;}
+  .login-form h2{color:var(--gold);text-align:center;margin-bottom:1.5rem;}
+  .login-form input{width:100%;padding:10px;margin:8px 0;border-radius:6px;border:1px solid #444;background:#333;color:white;}
+  .login-form button{width:100%;padding:12px;margin:8px 0;border-radius:6px;border:none;background:var(--gold);color:black;font-weight:bold;cursor:pointer;}
+  .login-form .switch{text-align:center;margin-top:1rem;color:#aaa;cursor:pointer;}
+</style>
+</head>
+<body>
+  <!-- Login Overlay -->
+  <div id="loginOverlay" class="login-overlay">
+    <div class="login-form">
+      <h2 id="loginTitle">Login</h2>
+      <input type="text" id="username" placeholder="Username">
+      <input type="password" id="password" placeholder="Password">
+      <button id="loginBtn">Login</button>
+      <button id="registerBtn" class="secondary" style="background:#444;color:white;">Register</button>
+      <div id="switchText" class="switch">Don't have an account? Register</div>
+      <div id="loginMessage" style="color:#ff6b6b;text-align:center;margin-top:1rem;"></div>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <div class="table">
+      <div class="title">ROYAL BACCARAT</div>
+      <div id="banner" class="banner"></div>
+
+      <div class="hud">
+        <div class="bank">User: <strong id="usernameDisplay">—</strong></div>
+        <div class="bank">Balance: <strong id="balance">$0</strong></div>
+        <div class="bank">Bet: <strong id="currentBet">$0</strong> → <span id="betOn">—</span></div>
+      </div>
+
+      <div class="controls">
+        <button id="deal" class="btn">Deal</button>
+        <button id="newshoe" class="btn secondary">New Shoe</button>
+        <button id="logout" class="btn secondary">Logout</button>
+      </div>
+
+      <div class="hand-area">
+        <div class="lane" id="playerLane">
+          <div class="lane-label">PLAYER <span id="playerCount">0</span></div>
+        </div>
+        <div class="lane" id="bankerLane">
+          <div class="lane-label">BANKER <span id="bankerCount">0</span></div>
+        </div>
+      </div>
+
+      <div class="spots">
+        <div class="spot" data-side="player">
+          <h3>PLAYER</h3><small>1 : 1</small>
+          <div class="chips-stack"></div>
+          <div id="bet-player" class="bet-total">$0</div>
+        </div>
+
+        <div class="spot" data-side="tie">
+          <h3>TIE</h3><small>8 : 1</small>
+          <div class="chips-stack"></div>
+          <div id="bet-tie" class="bet-total">$0</div>
+        </div>
+
+        <div class="spot" data-side="banker">
+          <h3>BANKER</h3><small>0.95 : 1</small>
+          <div class="chips-stack"></div>
+          <div id="bet-banker" class="bet-total">$0</div>
+        </div>
+      </div>
+
+      <div class="bottom-ui">
+        <div class="chips">
+          <div class="chip" draggable="true" data-value="10">10</div>
+          <div class="chip" draggable="true" data-value="50">50</div>
+          <div class="chip" draggable="true" data-value="100">100</div>
+          <div class="chip" draggable="true" data-value="500">500</div>
+          <div class="chip" draggable="true" data-value="1000">1K</div>
+        </div>
+
+        <button id="clear" class="btn secondary">Clear</button>
+        <button id="redo" class="btn secondary">Redo</button>
+        <button id="double" class="btn secondary">2x</button>
+      </div>
+
+      <div id="toast" class="toast">Drag a chip to place a bet.</div>
+      
+      <!-- Loading spinner -->
+      <div id="spinner" class="spinner">Loading...</div>
+    </div>
+  </div>
+
+<script>
+  const $ = (sel, root=document) => root.querySelector(sel);
+  const SERVER_URL = 'https://casinoaqua-server.onrender.com';
+
+  // Auth functions
+  function getToken() {
+    return localStorage.getItem('token');
+  }
+
+  async function getCurrentUser() {
+    const token = getToken();
+    if (!token) return null;
+    try {
+      const res = await fetch(`${SERVER_URL}/me`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (data && data.success) {
+        localStorage.setItem('userBalance', String(data.user.balance || 0));
+        return data.user;
+      }
+    } catch (e) {
+      console.error('getCurrentUser error', e);
+    }
+    return null;
+  }
+
+  async function saveGamePlay(game, bet, win) {
+    const token = getToken();
+    if (!token) return null;
+    try {
+      const res = await fetch(`${SERVER_URL}/play`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ game, bet, win })
+      });
+      const data = await res.json();
+      if (data && data.success) {
+        const newBalance = data.user.balance;
+        localStorage.setItem('userBalance', String(newBalance));
+        window.dispatchEvent(new CustomEvent('balanceUpdated', { detail: { balance: newBalance } }));
+        return data.user;
+      } else {
+        console.warn('saveGamePlay failed', data);
+        return null;
+      }
+    } catch (e) {
+      console.error('saveGamePlay error', e);
+      return null;
+    }
+  }
+
+  const state = {
+    balance: 0,
+    currentBet: 0,
+    betOn: null,
+    wagers: { player:0, banker:0, tie:0 },
+    lastWagers: null,
+    shoe: [],
+    handInProgress: false,
+    clearTimer: null,
+    currentUser: null
+  };
+
+  function sanitizeNumber(v){
+    if(typeof v !== 'number') v = Number(v);
+    if(!Number.isFinite(v) || isNaN(v)) return 0;
+    return Math.max(0, Math.round(v));
+  }
+
+  function updateHUD(){
+    state.balance = sanitizeNumber(state.balance);
+    state.currentBet = sanitizeNumber(state.currentBet);
+    $('#balance').textContent = `$${state.balance.toLocaleString()}`;
+    $('#currentBet').textContent = `$${state.currentBet.toLocaleString()}`;
+    $('#betOn').textContent = state.betOn ? state.betOn.toUpperCase() : '—';
+    ['player','banker','tie'].forEach(side => {
+      $(`#bet-${side}`).textContent = `$${(state.wagers[side]||0).toLocaleString()}`;
+    });
+  }
+
+  function toast(msg){
+    $('#toast').textContent = msg;
+  }
+
+  function showSpinner(show) {
+    if (show) {
+      $('#spinner').classList.add('active');
+    } else {
+      $('#spinner').classList.remove('active');
+    }
+  }
+
+  function shuffleDecks(decks=8){
+    const ranks=['A','2','3','4','5','6','7','8','9','10','J','Q','K'];
+    const suits=['♠','♥','♦','♣']; const cards=[];
+    for(let d=0; d<decks; d++){
+      for(const s of suits) for(const r of ranks) cards.push({r,s});
+    }
+    for(let i=cards.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [cards[i],cards[j]]=[cards[j],cards[i]]; }
+    return cards;
+  }
+
+  const cardValue = r => (r==='A'?1:(['10','J','Q','K'].includes(r)?0:parseInt(r,10)));
+  const total = hand => hand.reduce((a,c)=>(a+cardValue(c.r))%10, 0);
+
+  function makeCardEl(card){
+    const el = document.createElement('div'); el.className='card';
+    const red = (card.s==='♥'||card.s==='♦');
+    el.innerHTML = `
+      <div class="face ${red?'red':'black'}">
+        <div class="corner"><div class="rank">${card.r}</div><div class="pip">${card.s}</div></div>
+        <div class="suit">${card.s}</div>
+        <div class="corner right"><div class="rank">${card.r}</div><div class="pip">${card.s}</div></div>
+      </div>`;
+    return el;
+  }
+
+  function clearLane(el){
+    el.querySelectorAll('.card').forEach(c=>c.remove());
+  }
+
+  function resetWagers(){
+    state.wagers = { player:0, banker:0, tie:0 };
+    state.currentBet = 0;
+    state.betOn = null;
+    document.querySelectorAll('.chips-stack').forEach(s => s.innerHTML = '');
+    updateHUD();
+  }
+
+  function needNewShoe(){ return state.shoe.length < 52; }
+  function draw(){ if(needNewShoe()) state.shoe = shuffleDecks(8); return state.shoe.pop(); }
+
+  function updateCounts(p,b){
+    $('#playerCount').textContent = p;
+    $('#bankerCount').textContent = b;
+  }
+
+  function animateChipDisplay(side){
+    const spot = document.querySelector(`.spot[data-side="${side}"]`);
+    const stack = spot.querySelector('.chips-stack');
+    let chipEl = stack.querySelector('.stack-chip');
+    if(!chipEl){
+      chipEl = document.createElement('div');
+      chipEl.className = 'stack-chip';
+      chipEl.style.background = side === 'banker' ? '#c62828' : (side === 'tie' ? '#2e7d32' : '#1565c0');
+      stack.appendChild(chipEl);
+    }
+    const v = sanitizeNumber(state.wagers[side] || 0);
+    chipEl.textContent = v >= 1000 ? (v/1000).toFixed(v%1000===0?0:1) + 'K' : v;
+    $(`#bet-${side}`).textContent = `$${v.toLocaleString()}`;
+  }
+
+  function placeBet(side, amount){
+    amount = sanitizeNumber(amount);
+    if(amount <= 0) { toast("Invalid bet"); return false; }
+    if(state.handInProgress) { toast("Betting locked during a round"); return false; }
+    if(state.balance < amount) { toast("Insufficient balance"); return false; }
+
+    state.balance = sanitizeNumber(state.balance - amount);
+    state.currentBet = sanitizeNumber(state.currentBet + amount);
+    state.betOn = side;
+    state.wagers[side] = sanitizeNumber((state.wagers[side]||0) + amount);
+    updateHUD();
+    animateChipDisplay(side);
+    return true;
+  }
+
+  function redoBet(){
+    if(!state.lastWagers) { toast("No previous bet"); return; }
+    const needed = Object.values(state.lastWagers).reduce((a,b)=>a+sanitizeNumber(b),0);
+    if(state.balance < needed) { toast("Not enough balance to redo"); return; }
+    const snapshot = {...state.lastWagers};
+    for(const side of ['player','banker','tie']){
+      if(snapshot[side] > 0) placeBet(side, snapshot[side]);
+    }
+    toast("Redo placed");
+  }
+
+  function doubleBet(){
+    if(state.currentBet <= 0) { toast("No bet to double"); return; }
+    const snapshot = {...state.wagers};
+    const needed = Object.values(snapshot).reduce((a,b)=>a+sanitizeNumber(b),0);
+    if(needed <= 0) { toast("No bet to double"); return; }
+    if(state.balance < needed) { toast("Not enough balance to 2x"); return; }
+    for(const side of ['player','banker','tie']){
+      if(snapshot[side] > 0) placeBet(side, snapshot[side]);
+    }
+    toast("Bet doubled");
+  }
+
+  async function dealRound(){
+    if(state.handInProgress) return;
+    if(state.currentBet <= 0) { toast("Place a bet first."); return; }
+
+    state.handInProgress = true;
+    if(state.clearTimer) { clearTimeout(state.clearTimer); state.clearTimer = null; }
+
+    $('#deal').classList.add('disabled');
+    $('#clear').classList.add('disabled');
+    $('#newshoe').classList.add('disabled');
+    $('#redo').classList.add('disabled');
+    $('#double').classList.add('disabled');
+
+    $('#banner').classList.remove('show','fadeout');
+
+    const player = [], banker = [];
+    clearLane($('#playerLane'));
+    clearLane($('#bankerLane'));
+    updateCounts(0,0);
+
+    for(let i=0;i<2;i++){
+      await new Promise(r=>setTimeout(r, 400));
+      const cP = draw(); const elP = makeCardEl(cP);
+      $('#playerLane').appendChild(elP);
+      setTimeout(()=>elP.classList.add('show'), 50);
+      player.push(cP);
+      updateCounts(total(player), total(banker));
+
+      await new Promise(r=>setTimeout(r, 400));
+      const cB = draw(); const elB = makeCardEl(cB);
+      $('#bankerLane').appendChild(elB);
+      setTimeout(()=>elB.classList.add('show'), 50);
+      banker.push(cB);
+      updateCounts(total(player), total(banker));
+    }
+
+    const pT = () => total(player), bT = () => total(banker);
+    if(pT() >= 8 || bT() >= 8) { await resolveBets(player, banker); return; }
+
+    let playerThird = null;
+    if(pT() <= 5){
+      playerThird = draw();
+      const el = makeCardEl(playerThird);
+      $('#playerLane').appendChild(el);
+      setTimeout(()=>el.classList.add('show'), 50);
+      player.push(playerThird);
+      updateCounts(total(player), total(banker));
+    }
+
+    const B = bT();
+    const drawBanker = (cond) => {
+      if(cond){
+        const c = draw();
+        const el = makeCardEl(c);
+        $('#bankerLane').appendChild(el);
+        setTimeout(()=>el.classList.add('show'), 50);
+        banker.push(c);
+        updateCounts(total(player), total(banker));
+      }
+    };
+
+    if(playerThird === null){
+      drawBanker(B <= 5);
+    } else {
+      const pt = cardValue(playerThird.r);
+      if(B <= 2) drawBanker(true);
+      else if(B === 3) drawBanker(pt !== 8);
+      else if(B === 4) drawBanker(pt >= 2 && pt <= 7);
+      else if(B === 5) drawBanker(pt >= 4 && pt <= 7);
+      else if(B === 6) drawBanker(pt === 6 || pt === 7);
+    }
+
+    await resolveBets(player, banker);
+  }
+
+  async function resolveBets(player, banker){
+    const p = total(player), b = total(banker);
+    let winner = 'tie';
+    if(p > b) winner = 'player';
+    else if(b > p) winner = 'banker';
+
+    const pay = { player:1, banker:0.95, tie:8 };
+    let winAmt = 0, msg = '';
+
+    if(winner === 'tie'){
+      winAmt += sanitizeNumber(state.wagers.tie) * pay.tie;
+      state.balance = sanitizeNumber(state.balance + sanitizeNumber(state.wagers.player) + sanitizeNumber(state.wagers.banker));
+      msg = `TIE ${p}-${b}`;
+    } else if(winner === 'player'){
+      winAmt += sanitizeNumber(state.wagers.player) * (1 + pay.player);
+      msg = `PLAYER wins ${p} to ${b}`;
+    } else {
+      winAmt += sanitizeNumber(state.wagers.banker) * (1 + pay.banker);
+      msg = `BANKER wins ${b} to ${p}`;
+    }
+
+    state.balance = sanitizeNumber(state.balance + winAmt);
+    updateHUD();
+
+    // Save game result to backend
+    if (state.currentUser) {
+      const totalBet = state.currentBet;
+      const totalWin = winAmt;
+      showSpinner(true);
+      const result = await saveGamePlay('baccarat', totalBet, totalWin);
+      if (result) {
+        state.balance = result.balance;
+        updateHUD();
+      }
+      showSpinner(false);
+    }
+
+    $('#banner').textContent = msg;
+    $('#banner').classList.add('show');
+
+    toast(`${msg}. Balance $${state.balance.toLocaleString()}`);
+
+    state.lastWagers = { ...state.wagers };
+    resetWagers();
+
+    state.handInProgress = false;
+    $('#deal').classList.remove('disabled');
+    $('#clear').classList.remove('disabled');
+    $('#newshoe').classList.remove('disabled');
+    $('#redo').classList.remove('disabled');
+    $('#double').classList.remove('disabled');
+
+    if(state.clearTimer) { clearTimeout(state.clearTimer); state.clearTimer = null; }
+    state.clearTimer = setTimeout(()=>{
+      document.querySelectorAll('.card').forEach(c => c.classList.add('fadeout'));
+      $('#banner').classList.add('fadeout');
+      setTimeout(()=>{
+        clearLane($('#playerLane'));
+        clearLane($('#bankerLane'));
+        updateCounts(0,0);
+        $('#banner').classList.remove('show','fadeout');
+      }, 900);
+    }, 17000);
+  }
+
+  // Auth functions
+  async function login(username, password) {
+    try {
+      showSpinner(true);
+      const res = await fetch(`${SERVER_URL}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        localStorage.setItem('token', data.token);
+        state.currentUser = data.user;
+        state.balance = data.user.balance;
+        $('#usernameDisplay').textContent = data.user.username;
+        updateHUD();
+        $('#loginOverlay').style.display = 'none';
+        toast(`Welcome ${data.user.username}!`);
+      } else {
+        $('#loginMessage').textContent = data.message || 'Login failed';
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      $('#loginMessage').textContent = 'Connection error';
+    } finally {
+      showSpinner(false);
+    }
+  }
+
+  async function register(username, password) {
+    try {
+      showSpinner(true);
+      const res = await fetch(`${SERVER_URL}/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        localStorage.setItem('token', data.token);
+        state.currentUser = data.user;
+        state.balance = data.user.balance;
+        $('#usernameDisplay').textContent = data.user.username;
+        updateHUD();
+        $('#loginOverlay').style.display = 'none';
+        toast(`Welcome ${data.user.username}!`);
+      } else {
+        $('#loginMessage').textContent = data.message || 'Registration failed';
+      }
+    } catch (error) {
+      console.error('Registration error:', error);
+      $('#loginMessage').textContent = 'Connection error';
+    } finally {
+      showSpinner(false);
+    }
+  }
+
+  function logout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('userBalance');
+    state.currentUser = null;
+    state.balance = 0;
+    resetWagers();
+    $('#usernameDisplay').textContent = '—';
+    updateHUD();
+    $('#loginOverlay').style.display = 'flex';
+    toast('Logged out');
+  }
+
+  function init(){
+    // Check if user is already logged in
+    const token = getToken();
+    if (token) {
+      showSpinner(true);
+      getCurrentUser().then(user => {
+        if (user) {
+          state.currentUser = user;
+          state.balance = user.balance;
+          $('#usernameDisplay').textContent = user.username;
+          updateHUD();
+          $('#loginOverlay').style.display = 'none';
+          toast(`Welcome back ${user.username}!`);
+        } else {
+          $('#loginOverlay').style.display = 'flex';
+        }
+        showSpinner(false);
+      });
+    } else {
+      $('#loginOverlay').style.display = 'flex';
+    }
+
+    state.shoe = shuffleDecks(8);
+    updateHUD();
+
+    // Login/Register handlers
+    $('#loginBtn').addEventListener('click', () => {
+      const username = $('#username').value.trim();
+      const password = $('#password').value.trim();
+      if (username && password) {
+        login(username, password);
+      } else {
+        $('#loginMessage').textContent = 'Please fill all fields';
+      }
+    });
+
+    $('#registerBtn').addEventListener('click', () => {
+      const username = $('#username').value.trim();
+      const password = $('#password').value.trim();
+      if (username && password) {
+        register(username, password);
+      } else {
+        $('#loginMessage').textContent = 'Please fill all fields';
+      }
+    });
+
+    $('#switchText').addEventListener('click', () => {
+      const isLogin = $('#loginTitle').textContent === 'Login';
+      if (isLogin) {
+        $('#loginTitle').textContent = 'Register';
+        $('#loginBtn').style.display = 'none';
+        $('#registerBtn').style.display = 'block';
+        $('#switchText').textContent = 'Already have an account? Login';
+      } else {
+        $('#loginTitle').textContent = 'Login';
+        $('#loginBtn').style.display = 'block';
+        $('#registerBtn').style.display = 'none';
+        $('#switchText').textContent = 'Don\'t have an account? Register';
+      }
+    });
+
+    $('#logout').addEventListener('click', logout);
+
+    // Game handlers
+    document.querySelectorAll('.chip').forEach(chip => {
+      chip.addEventListener('dragstart', e => {
+        e.dataTransfer.setData('value', chip.dataset.value);
+      });
+    });
+
+    document.querySelectorAll('.spot').forEach(spot => {
+      spot.addEventListener('dragover', e => { e.preventDefault(); });
+      spot.addEventListener('drop', e => {
+        e.preventDefault();
+        if(state.handInProgress) { toast("Betting locked during a round"); return; }
+        if(!state.currentUser) { toast("Please login to place bets"); return; }
+
+        const raw = e.dataTransfer.getData('value');
+        let val = Number(raw);
+        if(!Number.isFinite(val) || isNaN(val)) {
+          val = parseInt(raw, 10);
+          if(!Number.isFinite(val) || isNaN(val)) { toast("Invalid chip"); return; }
+        }
+        val = sanitizeNumber(val);
+
+        const side = spot.dataset.side;
+        if(state.balance < val) { toast("Insufficient balance"); return; }
+        placeBet(side, val);
+        toast(`Bet $${val} on ${side.toUpperCase()}`);
+      });
+    });
+
+    $('#deal').addEventListener('click', () => dealRound());
+    $('#clear').addEventListener('click', () => {
+      if(state.handInProgress) { toast("Can't clear during round"); return; }
+      if(state.currentBet <= 0) { toast("No bet to clear"); return; }
+      state.balance = sanitizeNumber(state.balance + state.currentBet);
+      resetWagers();
+      updateHUD();
+      toast("Bet cleared and refunded");
+    });
+    $('#newshoe').addEventListener('click', () => {
+      if(state.handInProgress) { toast("Can't change shoe during round"); return; }
+      state.shoe = shuffleDecks(8);
+      toast("New shoe ready");
+    });
+    $('#redo').addEventListener('click', () => {
+      if(state.handInProgress) { toast("Can't redo during round"); return; }
+      redoBet();
+    });
+    $('#double').addEventListener('click', () => {
+      if(state.handInProgress) { toast("Can't 2x during round"); return; }
+      doubleBet();
+    });
+
+    setInterval(()=>{
+      state.balance = sanitizeNumber(state.balance);
+      state.currentBet = sanitizeNumber(state.currentBet);
+      ['player','banker','tie'].forEach(s => state.wagers[s] = sanitizeNumber(state.wagers[s]));
+      updateHUD();
+    }, 1500);
+  }
+
+  init();
+</script>
+</body>
+</html>

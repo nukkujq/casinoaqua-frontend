@@ -68,7 +68,7 @@
 </head>
 <body>
   <!-- Back button -->
-  <button class="back-btn" onclick="history.back()">← Back</button>
+  <button class="back-btn" onclick="goBack()">← Back</button>
 
   <div class="container">
     <div class="sidebar">
@@ -92,9 +92,10 @@
     </div>
   </div>
 
-  <script>
-    const SERVER_URL = 'https://casinoaqua-server.onrender.com';
+<!-- Include auth.js -->
+<script src="auth.js"></script>
 
+<script>
     const payouts={
       low:[1.28,1.71,2.28,3.03,4.05,5.39,7.19,9.59,12.79,17.05],
       medium:[1.44,2.16,3.24,4.86,7.29,10.93,16.40,24.60,36.91,55.36],
@@ -114,17 +115,25 @@
 
     const fmt=v=>`$${v.toLocaleString()}`;
 
+    // Back button function
+    function goBack() {
+      window.location.href = 'index.html'; // Change this to your main games page
+    }
+
+    // Initialize balance from backend
     async function loadUserAndBalance(){
-      try{
-        const token = localStorage.getItem('token');
-        if(!token) return;
-        const res = await fetch(`${SERVER_URL}/me`, { headers: { 'Authorization': `Bearer ${token}` }});
-        const data = await res.json();
-        if(data && data.success){
-          balance = Number(data.user.balance)||0;
-          balanceEl.textContent=balance.toFixed(2);
+      try {
+        const user = await getCurrentUser();
+        if (user) {
+          balance = Number(user.balance) || 0;
+          balanceEl.textContent = balance.toFixed(2);
+        } else {
+          // If not logged in, redirect to login
+          window.location.href = 'index.html';
         }
-      }catch(e){}
+      } catch(e) {
+        console.error('Error loading user balance:', e);
+      }
     }
 
     function buildTower(){
@@ -164,23 +173,24 @@
       if(currentRow<10) steps[currentRow]?.classList.add('active');
     }
 
-async function startGame(){
-  bet=parseFloat(betEl.value);
-  if(!bet||bet<=0||bet>balance){alert('Invalid bet amount');return;}
-  balance-=bet; 
-  balanceEl.textContent=balance.toFixed(2);
-  currentRow=0; bombPositions=[]; gameActive=true;
-  betBtn.textContent='Cash Out';
-  diffEl.disabled=true;
-  statusEl.textContent='Game started! Pick a tile.';
-  multiplierEl.textContent='1.00×';
-  buildTower(); 
-  highlightLadder();
-  // ❌ poistettu: await saveGamePlay("Tower", bet, 0);
-}
+    async function startGame(){
+      bet=parseFloat(betEl.value);
+      if(!bet||bet<=0||bet>balance){alert('Invalid bet amount');return;}
+      
+      // Deduct bet from balance immediately
+      balance-=bet; 
+      balanceEl.textContent=balance.toFixed(2);
+      
+      currentRow=0; bombPositions=[]; gameActive=true;
+      betBtn.textContent='Cash Out';
+      diffEl.disabled=true;
+      statusEl.textContent='Game started! Pick a tile.';
+      multiplierEl.textContent='1.00×';
+      buildTower(); 
+      highlightLadder();
+    }
 
-
-    function revealTile(tile){
+    async function revealTile(tile){
       if(!gameActive) return;
       const r=+tile.dataset.row; if(r!==currentRow) return;
       if(bombPositions[r]===undefined){
@@ -189,13 +199,13 @@ async function startGame(){
       }
       if(+tile.dataset.index===bombPositions[r]){
         tile.classList.add('bomb');
-        gameOver(false);
+        await gameOver(false);
       }else{
         tile.classList.add('safe');
         currentRow++;
         if(currentRow>0){const m=payouts[difficulty][currentRow-1]; multiplierEl.textContent=m.toFixed(2)+'×';}
         highlightLadder();
-        if(currentRow>=10){gameOver(true);} else {statusEl.textContent='Safe! Go up.';}
+        if(currentRow>=10){await gameOver(true);} else {statusEl.textContent='Safe! Go up.';}
       }
     }
 
@@ -217,45 +227,49 @@ async function startGame(){
       });
     }
 
-async function gameOver(win){
-  gameActive=false;
-  revealAllTiles();
-  if(win){
-    const winnings=bet*payouts[difficulty][currentRow-1];
-    statusEl.textContent=`You climbed all! Winnings: $${winnings.toFixed(2)}`;
-    const user = await saveGamePlay("Tower", bet, winnings);
-    if(user){
-      balance = user.balance;
-      balanceEl.textContent = balance.toFixed(2);
+    async function gameOver(win){
+      gameActive=false;
+      revealAllTiles();
+      
+      let winnings = 0;
+      if(win){
+        winnings = bet * payouts[difficulty][currentRow-1];
+        statusEl.textContent=`You climbed all! Winnings: $${winnings.toFixed(2)}`;
+      } else {
+        winnings = 0;
+        statusEl.textContent='Boom! You lost.';
+      }
+
+      // Save game result to backend
+      const result = await saveGamePlay("tower", bet, winnings);
+      if (result) {
+        // Update balance from backend response
+        balance = result.balance;
+        balanceEl.textContent = balance.toFixed(2);
+      }
+
+      betBtn.textContent='Bet';
+      diffEl.disabled=false;
     }
-  }else{
-    statusEl.textContent='Boom! You lost.';
-    const user = await saveGamePlay("Tower", bet, 0);
-    if(user){
-      balance = user.balance;
-      balanceEl.textContent = balance.toFixed(2);
+
+    async function cashOut(){
+      if(!gameActive||currentRow===0) return;
+      const mult=payouts[difficulty][currentRow-1];
+      const winnings=bet*mult;
+      statusEl.textContent=`Cashed out at ${mult.toFixed(2)}×`;
+      gameActive=false; 
+      betBtn.textContent='Bet';
+      diffEl.disabled=false;
+      revealAllTiles();
+
+      // Save game result to backend
+      const result = await saveGamePlay("tower", bet, winnings);
+      if (result) {
+        // Update balance from backend response
+        balance = result.balance;
+        balanceEl.textContent = balance.toFixed(2);
+      }
     }
-  }
-  betBtn.textContent='Bet';
-  diffEl.disabled=false;
-}
-
-async function cashOut(){
-  if(!gameActive||currentRow===0) return;
-  const mult=payouts[difficulty][currentRow-1];
-  const winnings=bet*mult;
-  statusEl.textContent=`Cashed out at ${mult.toFixed(2)}×`;
-  gameActive=false; betBtn.textContent='Bet';
-  diffEl.disabled=false;
-  revealAllTiles();
-
-  const user = await saveGamePlay("Tower", bet, winnings);
-  if(user){
-    balance = user.balance;
-    balanceEl.textContent = balance.toFixed(2);
-  }
-}
-
 
     towerEl.addEventListener('click',e=>{ if(e.target.classList.contains('tile')) revealTile(e.target); });
     betBtn.addEventListener('click',()=>{ if(!gameActive) startGame(); else cashOut(); });
@@ -264,33 +278,10 @@ async function cashOut(){
       difficulty=diffEl.value; buildTower(); buildLadder(); statusEl.textContent='Choose difficulty and place a bet.'; multiplierEl.textContent='1.00×'; currentRow=0;
     });
 
-    buildTower(); buildLadder();
+    // Initialize the game
+    buildTower(); 
+    buildLadder();
     loadUserAndBalance();
-
-    async function saveGamePlay(game, bet, win) {
-      try {
-        const token = localStorage.getItem("token");
-        if (!token) return null;
-
-        const res = await fetch(`${SERVER_URL}/play`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-          },
-          body: JSON.stringify({ game, bet, win })
-        });
-
-        const data = await res.json();
-        if (data.success && data.user) {
-          return data.user; // sisältää päivitetyn saldon
-        }
-        return null;
-      } catch (err) {
-        console.error("saveGamePlay error", err);
-        return null;
-      }
-    }
-  </script>
+</script>
 </body>
 </html>

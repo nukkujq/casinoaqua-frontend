@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Poseidon Coinflip</title>
+  <style>
+    :root{
+      --bg1:#06131f; --bg2:#0b1f31; --accent:#3dbff2; --accent-2:#8de1ff; --panel:#0e1522; --panel-2:#121b2b; --text:#d7e7ff; --muted:#8aa0b8;
+      --success:#35e0a1; --danger:#ff6b6b; --glow:#57d1ff;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0; font-family: Inter,system-ui,Segoe UI,Roboto,Arial,Helvetica,sans-serif; color:var(--text); background: radial-gradient(1200px 800px at 20% 0%, #0b2236 0%, #081624 40%, #050c13 100%); overflow:hidden}
+    .ocean{position:fixed; inset:0; z-index:-1; overflow:hidden; background: radial-gradient(60vw 40vh at 50% -10%, #0e3352, transparent 60%), radial-gradient(80vw 60vh at 50% 100%, #051019, transparent 60%)}
+    .wave{position:absolute; inset:-30%; background: repeating-radial-gradient(circle at 50% 50%, rgba(61,191,242,0.04) 0 6px, rgba(0,0,0,0) 6px 20px); filter: blur(10px)}
+    .wave.w1{animation: drift1 18s linear infinite; opacity:.9}
+    .wave.w2{animation: drift2 26s linear infinite; opacity:.6}
+    .wave.w3{animation: drift3 34s linear infinite; opacity:.4}
+    @keyframes drift1{from{transform:translateX(-8%) translateY(-2%) rotate(0)}to{transform:translateX(8%) translateY(2%) rotate(360deg)}}
+    @keyframes drift2{from{transform:translateX(6%) translateY(-4%) rotate(0)}to{transform:translateX(-6%) translateY(4%) rotate(-360deg)}}
+    @keyframes drift3{from{transform:translateX(-4%) translateY(6%) rotate(0)}to{transform:translateX(4%) translateY(-6%) rotate(360deg)}}
+
+    .wrap{height:100%; display:grid; grid-template-columns: 360px 1fr 280px; gap:22px; padding:22px}
+    .panel{background: linear-gradient(180deg,var(--panel),var(--panel-2)); border:1px solid rgba(255,255,255,.06); border-radius:16px; box-shadow: 0 10px 30px rgba(0,0,0,.35)}
+    .left, .center, .right{padding:18px}
+    .title{font-weight:700; letter-spacing:.2px; margin:2px 0 12px 0; color:#e8f3ff}
+    .label{color:var(--muted); font-size:13px; margin-bottom:8px}
+
+    .betbox{background:#0b1320; border:1px solid rgba(255,255,255,.08); padding:12px; border-radius:12px; display:flex; align-items:center; gap:10px}
+    .betbox input{flex:1; background:transparent; border:none; color:#e9f4ff; font-size:16px; outline:none}
+    .betbox.disabled{opacity:.6}
+    .betbox.disabled input{pointer-events:none}
+    .chip-row{display:flex; gap:8px; margin-top:10px}
+    .chip{font-size:12px; padding:6px 10px; border-radius:8px; border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.04); cursor:pointer}
+    .chip.disabled{opacity:.6; pointer-events:none}
+
+    .coin-choices{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+    .coin-option{background:#0b1320; border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:transform .08s ease, box-shadow .2s ease, border-color .2s ease}
+    .coin-option.active{border-color:rgba(87,209,255,.7); box-shadow:0 0 0 4px rgba(87,209,255,.12) inset}
+    .coin-option:active{transform:translateY(1px)}
+    .coin-option.disabled{opacity:.6; pointer-events:none}
+
+    .btn-primary{display:block; width:100%; margin-top:12px; background:#1b66ff; border:none; color:white; font-weight:700; border-radius:12px; padding:12px; cursor:pointer; box-shadow:0 12px 24px rgba(27,102,255,.22); transition:filter .2s ease, transform .06s ease}
+    .btn-primary:active{transform:translateY(1px)}
+    .btn-primary:disabled{background:#3a3f46; cursor:not-allowed; box-shadow:none}
+
+    .stage{height:100%; display:flex; align-items:center; justify-content:center}
+    .coin3d{width:200px; height:200px; perspective:1200px; position:relative}
+    .coin-inner{width:100%; height:100%; position:relative; transform-style:preserve-3d; transition: transform 1000ms cubic-bezier(.2,.7,.2,1)}
+    .face{position:absolute; inset:0; border-radius:50%; backface-visibility:hidden; border:1px solid rgba(255,255,255,.15); box-shadow: inset 0 0 30px rgba(0,0,0,.5), 0 20px 40px rgba(0,0,0,.45)}
+    .blue-face{background: radial-gradient(circle at 30% 30%, #e7fbff, #b6eeff 35%, #6ec9ea 60%, #1f8cb6 80%, #0c5576 100%)}
+    .blue-face .emblem{position:absolute; inset:0}
+    .silver-face{background: radial-gradient(circle at 30% 30%, #ffffff, #dbe5ec 35%, #aeb9c5 60%, #7a8794 85%, #545e68 100%); transform: rotateY(180deg)}
+    svg{display:block}
+    .emblem svg{width:70%; height:70%; position:absolute; top:15%; left:15%; filter: drop-shadow(0 6px 10px rgba(0,0,0,.35))}
+    .trident { fill: rgba(255,255,255,.85) }
+    .kelp { fill: rgba(31,139,110,.9) }
+
+    .stat{border:1px solid rgba(255,255,255,.08); border-radius:12px; padding:16px; text-align:center; background:#0b1320; margin-bottom:12px}
+    .stat .big{font-size:32px; font-weight:800; letter-spacing:1px; color:#eaf6ff}
+    .muted{color:var(--muted)}
+    .pattern{display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; justify-content:center}
+    .pt{width:16px; height:16px; border-radius:50%; box-shadow: inset 0 0 6px rgba(0,0,0,.5)}
+    .pt.blue{background: radial-gradient(circle at 30% 30%, #d8f5ff, #6ec9ea 70%, #0c5576)}
+    .pt.silver{background: radial-gradient(circle at 30% 30%, #ffffff, #aeb9c5 70%, #545e68)}
+
+    .ladder{position:absolute; left:22px; right:22px; bottom:22px; display:flex; gap:12px; justify-content:flex-start; overflow-x:auto; padding:4px 6px}
+    .ladder::-webkit-scrollbar{height:8px}
+    .ladder::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12); border-radius:8px}
+    .bubble{min-width:92px; height:48px; border-radius:14px; display:flex; align-items:center; justify-content:center; background: rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); color:#cfe7ff; font-weight:700; font-size:14px; scroll-snap-align:center}
+    .bubble.win{box-shadow: 0 0 0 2px rgba(53,224,161,.4) inset, 0 0 18px rgba(53,224,161,.35); color:#d8ffee}
+    .bubble.lose{box-shadow: 0 0 0 2px rgba(255,107,107,.45) inset, 0 0 18px rgba(255,107,107,.35); color:#ffdede}
+
+    /* Login overlay */
+    .login-overlay{position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); display:flex; justify-content:center; align-items:center; z-index:1000;}
+    .login-form{background:#1a1a1a; padding:2rem; border-radius:12px; border:2px solid var(--accent); min-width:300px;}
+    .login-form h2{color:var(--accent); text-align:center; margin-bottom:1.5rem;}
+    .login-form input{width:100%; padding:10px; margin:8px 0; border-radius:6px; border:1px solid #444; background:#333; color:white;}
+    .login-form button{width:100%; padding:12px; margin:8px 0; border-radius:6px; border:none; background:var(--accent); color:black; font-weight:bold; cursor:pointer;}
+    .login-form .switch{text-align:center; margin-top:1rem; color:#aaa; cursor:pointer;}
+    .user-info{position:absolute; top:22px; right:22px; background:var(--panel); padding:8px 16px; border-radius:12px; border:1px solid rgba(255,255,255,.08); font-size:14px;}
+
+    /* Loading spinner */
+    .spinner{display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:100; color:var(--accent); font-size:18px;}
+    .spinner.active{display:block;}
+  </style>
+</head>
+<body>
+  <!-- Login Overlay -->
+  <div id="loginOverlay" class="login-overlay">
+    <div class="login-form">
+      <h2 id="loginTitle">Login</h2>
+      <input type="text" id="username" placeholder="Username">
+      <input type="password" id="password" placeholder="Password">
+      <button id="loginBtn">Login</button>
+      <button id="registerBtn" class="secondary" style="background:#444;color:white;">Register</button>
+      <div id="switchText" class="switch">Don't have an account? Register</div>
+      <div id="loginMessage" style="color:#ff6b6b;text-align:center;margin-top:1rem;"></div>
+    </div>
+  </div>
+
+  <!-- User Info -->
+  <div id="userInfo" class="user-info" style="display:none;">
+    <span id="usernameDisplay">—</span> | Balance: $<span id="balanceDisplay">0</span>
+    <button id="logoutBtn" style="margin-left:12px; background:#444; color:white; border:none; padding:4px 8px; border-radius:6px; cursor:pointer;">Logout</button>
+  </div>
+
+  <div class="ocean"><div class="wave w1"></div><div class="wave w2"></div><div class="wave w3"></div></div>
+
+  <div class="wrap">
+    <div class="panel left">
+      <div class="title">Bet Amount</div>
+      <div class="betbox" id="betbox">
+        <span class="badge">💧</span>
+        <input id="bet" type="number" value="10" min="0.01" step="0.01" />
+      </div>
+      <div class="chip-row" id="chipRow">
+        <button class="chip" data-multi="0.5">½</button>
+        <button class="chip" data-multi="2">2×</button>
+      </div>
+
+      <div class="title" style="margin-top:16px">Coin Side</div>
+      <div class="coin-choices" id="coinChoices">
+        <div class="coin-option active disabled" id="opt-blue" data-side="blue">
+          <div class="coin3d" style="width:72px;height:72px">
+            <div class="coin-inner" id="optBlueInner" style="transform:rotateY(0deg)">
+              <div class="face blue-face">
+                <div class="emblem"><svg viewBox="0 0 100 100"><path class="trident" d="M50 10c-4 7-8 10-13 12 3 3 7 4 13 4s10-1 13-4c-5-2-9-5-13-12zM46 28v40l-8 14h8v10h8V82h8l-8-14V28h-8zM36 36l-12 8 12 8v-6h6v-4h-6v-6zm28 0v6h-6v4h6v6l12-8-12-8z"/></svg></div>
+              </div>
+              <div class="face silver-face"></div>
+            </div>
+          </div>
+        </div>
+        <div class="coin-option disabled" id="opt-silver" data-side="silver">
+          <div class="coin3d" style="width:72px;height:72px">
+            <div class="coin-inner" id="optSilverInner" style="transform:rotateY(180deg)">
+              <div class="face blue-face"></div>
+              <div class="face silver-face">
+                <div class="emblem"><svg viewBox="0 0 100 100"><path class="kelp" d="M40 90c-4-12 10-18 6-34-1-6-6-10-10-14 10 2 18 8 20 16 2 8-6 15-2 22 2 3 6 6 8 10-8-2-14-2-22 0z"/><path class="kelp" d="M60 92c-2-8 6-12 4-22-1-4-4-8-8-10 8 2 12 6 14 12 2 8-4 12-2 20-2 0-6 0-8 0z"/></svg></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <button class="btn-primary" id="betBtn" disabled>Please Login</button>
+    </div>
+
+    <div class="panel center">
+      <div class="stage">
+        <div class="coin3d" id="mainCoin">
+          <div class="coin-inner" id="coinInner" style="transform:rotateY(0deg)">
+            <div class="face blue-face">
+              <div class="emblem"><svg viewBox="0 0 100 100"><path class="trident" d="M50 10c-4 7-8 10-13 12 3 3 7 4 13 4s10-1 13-4c-5-2-9-5-13-12zM46 28v40l-8 14h8v10h8V82h8l-8-14V28h-8zM36 36l-12 8 12 8v-6h6v-4h-6v-6zm28 0v6h-6v4h6v6l12-8-12-8z"/></svg></div>
+            </div>
+            <div class="face silver-face">
+              <div class="emblem"><svg viewBox="0 0 100 100"><path class="kelp" d="M40 90c-4-12 10-18 6-34-1-6-6-10-10-14 10 2 18 8 20 16 2 8-6 15-2 22 2 3 6 6 8 10-8-2-14-2-22 0z"/><path class="kelp" d="M60 92c-2-8 6-12 4-22-1-4-4-8-8-10 8 2 12 6 14 12 2 8-4 12-2 20-2 0-6 0-8 0z"/></svg></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel right">
+      <div class="stat"><div class="big" id="hits">0</div><div class="muted">HITS</div></div>
+      <div class="stat"><div class="big" id="mult">0.00×</div><div class="muted">MULTIPLIER</div></div>
+      <div class="stat" id="patternBox" style="display:none">
+        <div class="muted">PATTERN</div>
+        <div class="pattern" id="pattern"></div>
+      </div>
+    </div>
+
+    <div class="ladder" id="ladder"></div>
+  </div>
+
+  <!-- Loading spinner -->
+  <div id="spinner" class="spinner">Loading...</div>
+
+  <script>
+    const SERVER_URL = 'https://casinoaqua-server.onrender.com';
+    const MULTS=[1.92,3.84,7.68,15.36,30.72,61.44,122.88,245.76,491.52,983.04];
+    const WIN_P=0.48;
+
+    // Auth functions
+    function getToken() {
+      return localStorage.getItem('token');
+    }
+
+    async function getCurrentUser() {
+      const token = getToken();
+      if (!token) return null;
+      try {
+        const res = await fetch(`${SERVER_URL}/me`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data && data.success) {
+          localStorage.setItem('userBalance', String(data.user.balance || 0));
+          return data.user;
+        }
+      } catch (e) {
+        console.error('getCurrentUser error', e);
+      }
+      return null;
+    }
+
+    async function saveGamePlay(game, bet, win) {
+      const token = getToken();
+      if (!token) return null;
+      try {
+        const res = await fetch(`${SERVER_URL}/play`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ game, bet, win })
+        });
+        const data = await res.json();
+        if (data && data.success) {
+          const newBalance = data.user.balance;
+          localStorage.setItem('userBalance', String(newBalance));
+          window.dispatchEvent(new CustomEvent('balanceUpdated', { detail: { balance: newBalance } }));
+          return data.user;
+        } else {
+          console.warn('saveGamePlay failed', data);
+          return null;
+        }
+      } catch (e) {
+        console.error('saveGamePlay error', e);
+        return null;
+      }
+    }
+
+    // Game state
+    const betInput = document.getElementById('bet');
+    const betBox = document.getElementById('betbox');
+    const coinInner = document.getElementById('coinInner');
+    const optBlue = document.getElementById('opt-blue');
+    const optSilver = document.getElementById('opt-silver');
+    const hitsEl = document.getElementById('hits');
+    const multEl = document.getElementById('mult');
+    const patternBox = document.getElementById('patternBox');
+    const patternEl = document.getElementById('pattern');
+    const ladder = document.getElementById('ladder');
+    const betBtn = document.getElementById('betBtn');
+
+    let chosenSide = 'blue';
+    let step = 0;
+    let running = false;
+    let active = false;
+    let history = [];
+    let deg = 0;
+    let lastFlipAt = 0;
+    let currentUser = null;
+    let userBalance = 0;
+
+    function updateBalanceDisplay() {
+      document.getElementById('balanceDisplay').textContent = userBalance.toLocaleString();
+    }
+
+    function renderLadder(){
+      ladder.innerHTML='';
+      MULTS.forEach((m,i)=>{
+        const b=document.createElement('div');
+        b.className='bubble'; b.textContent=m+'×';
+        if(i<history.length){ b.classList.add(history[i].correct?'win':'lose'); }
+        ladder.appendChild(b);
+      });
+    }
+
+    function scrollLadderTo(index){
+      const child=ladder.children[index];
+      if(!child) return;
+      const left=child.offsetLeft - (ladder.clientWidth/2 - child.clientWidth/2);
+      ladder.scrollTo({left, behavior:'smooth'});
+    }
+
+    function enableSideTiles(enable){
+      optBlue.classList.toggle('disabled', !enable);
+      optSilver.classList.toggle('disabled', !enable);
+    }
+
+    function selectSideAndFlip(side){
+      if(!active || running || !currentUser) return;
+      const now=Date.now(); if(now-lastFlipAt<150) return; lastFlipAt=now;
+      chosenSide=side;
+      optBlue.classList.toggle('active', side==='blue');
+      optSilver.classList.toggle('active', side==='silver');
+      flip();
+    }
+
+    optBlue.addEventListener('click',()=>selectSideAndFlip('blue'));
+    optSilver.addEventListener('click',()=>selectSideAndFlip('silver'));
+
+    function lockInputs(lock){
+      if(lock){ betBox.classList.add('disabled'); betInput.setAttribute('disabled',''); }
+      else { betBox.classList.remove('disabled'); betInput.removeAttribute('disabled'); }
+    }
+
+    function updateStats(){
+      hitsEl.textContent=step; multEl.textContent= step>0 ? (MULTS[step-1].toFixed(2)+'×') : '0.00×';
+    }
+
+    function updateButton(){
+      if(!currentUser) {
+        betBtn.textContent = 'Please Login';
+        betBtn.disabled = true;
+        return;
+      }
+      if(!active){ 
+        betBtn.textContent='Bet'; 
+        betBtn.disabled = false;
+        return; 
+      }
+      betBtn.textContent = step>0 ? ('Cash Out ×'+MULTS[step-1].toFixed(2)) : 'Cash Out';
+      betBtn.disabled = false;
+    }
+
+    function showPattern(){
+      patternEl.innerHTML='';
+      history.forEach(h=>{
+        const dot=document.createElement('div');
+        dot.className='pt '+(h.outcome==='blue'?'blue':'silver');
+        patternEl.appendChild(dot);
+      });
+      patternBox.style.display='block';
+    }
+
+    async function flip(){
+      if(!active || running || !currentUser) return;
+      
+      const betAmount = parseFloat(betInput.value) || 0;
+      if (betAmount <= 0) {
+        alert('Please enter a valid bet amount');
+        return;
+      }
+      if (betAmount > userBalance) {
+        alert('Insufficient balance');
+        return;
+      }
+
+      running = true; 
+      enableSideTiles(false);
+      
+      const win = Math.random() < WIN_P;
+      const outcome = win ? chosenSide : (chosenSide === 'blue' ? 'silver' : 'blue');
+      const fullSpins = 2 + Math.floor(Math.random() * 3);
+      const finalOffset = (outcome === 'blue') ? 0 : 180;
+      deg += fullSpins * 360 + (finalOffset - (deg % 360));
+      coinInner.style.transform = `rotateY(${deg}deg)`;
+
+      setTimeout(async () => {
+        const correct = (outcome === chosenSide);
+        history.push({ correct, outcome });
+        
+        if (correct) {
+          step++; 
+          renderLadder(); 
+          updateStats(); 
+          updateButton(); 
+          scrollLadderTo(step - 1);
+          if (step >= MULTS.length) { 
+            await cashout(true); 
+            return; 
+          }
+          running = false; 
+          enableSideTiles(true);
+        } else {
+          renderLadder(); 
+          updateStats();
+          
+          // Save loss to backend
+          const totalBet = betAmount;
+          const totalWin = 0;
+          showSpinner(true);
+          const result = await saveGamePlay('coinflip', totalBet, totalWin);
+          if (result) {
+            userBalance = result.balance;
+            updateBalanceDisplay();
+          }
+          showSpinner(false);
+          
+          active = false; 
+          running = false; 
+          lockInputs(false); 
+          updateButton();
+          enableSideTiles(false);
+          showPattern();
+        }
+      }, 1020);
+    }
+
+    async function cashout(auto = false){
+      if(step <= 0 && !auto){ return; }
+      
+      const betAmount = parseFloat(betInput.value) || 0;
+      const winAmount = betAmount * MULTS[step - 1];
+      
+      // Save win to backend
+      showSpinner(true);
+      const result = await saveGamePlay('coinflip', betAmount, winAmount);
+      if (result) {
+        userBalance = result.balance;
+        updateBalanceDisplay();
+      }
+      showSpinner(false);
+
+      alert((auto ? 'Auto-cashed ' : 'Cashed ') + 'out at ×' + MULTS[step - 1].toFixed(2) + ' = ' + winAmount.toFixed(2));
+      
+      step = 0; 
+      history = []; 
+      active = false; 
+      running = false; 
+      updateStats(); 
+      renderLadder(); 
+      patternBox.style.display = 'none';
+      lockInputs(false); 
+      updateButton(); 
+      enableSideTiles(false);
+      deg = 0; 
+      coinInner.style.transform = `rotateY(${deg}deg)`;
+      ladder.scrollTo({ left: 0, behavior: 'smooth' });
+    }
+
+    betBtn.addEventListener('click', async () => {
+      if (!currentUser) {
+        alert('Please login to play');
+        return;
+      }
+      
+      if (!active) {
+        const betAmount = parseFloat(betInput.value) || 0;
+        if (betAmount <= 0) {
+          alert('Please enter a valid bet amount');
+          return;
+        }
+        if (betAmount > userBalance) {
+          alert('Insufficient balance');
+          return;
+        }
+        
+        step = 0; 
+        history = []; 
+        patternBox.style.display = 'none'; 
+        renderLadder(); 
+        updateStats();
+        active = true; 
+        lockInputs(true); 
+        enableSideTiles(true); 
+        updateButton();
+        return;
+      }
+      if (step > 0 && !running) { 
+        await cashout(false); 
+      }
+    });
+
+    // Auth functions
+    function showSpinner(show) {
+      if (show) {
+        document.getElementById('spinner').classList.add('active');
+      } else {
+        document.getElementById('spinner').classList.remove('active');
+      }
+    }
+
+    async function login(username, password) {
+      try {
+        showSpinner(true);
+        const res = await fetch(`${SERVER_URL}/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+          localStorage.setItem('token', data.token);
+          currentUser = data.user;
+          userBalance = data.user.balance;
+          document.getElementById('usernameDisplay').textContent = data.user.username;
+          updateBalanceDisplay();
+          document.getElementById('userInfo').style.display = 'block';
+          document.getElementById('loginOverlay').style.display = 'none';
+          updateButton();
+        } else {
+          document.getElementById('loginMessage').textContent = data.message || 'Login failed';
+        }
+      } catch (error) {
+        console.error('Login error:', error);
+        document.getElementById('loginMessage').textContent = 'Connection error';
+      } finally {
+        showSpinner(false);
+      }
+    }
+
+    async function register(username, password) {
+      try {
+        showSpinner(true);
+        const res = await fetch(`${SERVER_URL}/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+          localStorage.setItem('token', data.token);
+          currentUser = data.user;
+          userBalance = data.user.balance;
+          document.getElementById('usernameDisplay').textContent = data.user.username;
+          updateBalanceDisplay();
+          document.getElementById('userInfo').style.display = 'block';
+          document.getElementById('loginOverlay').style.display = 'none';
+          updateButton();
+        } else {
+          document.getElementById('loginMessage').textContent = data.message || 'Registration failed';
+        }
+      } catch (error) {
+        console.error('Registration error:', error);
+        document.getElementById('loginMessage').textContent = 'Connection error';
+      } finally {
+        showSpinner(false);
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('userBalance');
+      currentUser = null;
+      userBalance = 0;
+      updateBalanceDisplay();
+      document.getElementById('userInfo').style.display = 'none';
+      document.getElementById('loginOverlay').style.display = 'flex';
+      updateButton();
+    }
+
+    // Initialize game
+    function init(){
+      // Check if user is already logged in
+      const token = getToken();
+      if (token) {
+        showSpinner(true);
+        getCurrentUser().then(user => {
+          if (user) {
+            currentUser = user;
+            userBalance = user.balance;
+            document.getElementById('usernameDisplay').textContent = user.username;
+            updateBalanceDisplay();
+            document.getElementById('userInfo').style.display = 'block';
+            document.getElementById('loginOverlay').style.display = 'none';
+            updateButton();
+          } else {
+            document.getElementById('loginOverlay').style.display = 'flex';
+          }
+          showSpinner(false);
+        });
+      } else {
+        document.getElementById('loginOverlay').style.display = 'flex';
+      }
+
+      renderLadder(); 
+      updateStats(); 
+      updateButton(); 
+      enableSideTiles(false);
+
+      // Login/Register handlers
+      document.getElementById('loginBtn').addEventListener('click', () => {
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value.trim();
+        if (username && password) {
+          login(username, password);
+        } else {
+          document.getElementById('loginMessage').textContent = 'Please fill all fields';
+        }
+      });
+
+      document.getElementById('registerBtn').addEventListener('click', () => {
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value.trim();
+        if (username && password) {
+          register(username, password);
+        } else {
+          document.getElementById('loginMessage').textContent = 'Please fill all fields';
+        }
+      });
+
+      document.getElementById('switchText').addEventListener('click', () => {
+        const isLogin = document.getElementById('loginTitle').textContent === 'Login';
+        if (isLogin) {
+          document.getElementById('loginTitle').textContent = 'Register';
+          document.getElementById('loginBtn').style.display = 'none';
+          document.getElementById('registerBtn').style.display = 'block';
+          document.getElementById('switchText').textContent = 'Already have an account? Login';
+        } else {
+          document.getElementById('loginTitle').textContent = 'Login';
+          document.getElementById('loginBtn').style.display = 'block';
+          document.getElementById('registerBtn').style.display = 'none';
+          document.getElementById('switchText').textContent = 'Don\'t have an account? Register';
+        }
+      });
+
+      document.getElementById('logoutBtn').addEventListener('click', logout);
+
+      // Chip handlers
+      document.querySelectorAll('.chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          const multi = parseFloat(chip.dataset.multi);
+          const current = parseFloat(betInput.value) || 0;
+          betInput.value = (current * multi).toFixed(2);
+        });
+      });
+    }
+
+    init();
+  </script>
+</body>
+</html>

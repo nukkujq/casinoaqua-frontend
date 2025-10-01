@@ -1,0 +1,739 @@
+[file name]: slots.html
+[file content begin]
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Atlantis Aqua Slots</title>
+<style>
+  :root {
+    --bg-top: #011a3a;
+    --bg-mid: #023b62;
+    --bg-bottom: #016f8a;
+    --aqua: #20e6ff;
+    --accent: #ffd36b;
+    --win: #6bff95;
+    --lose: #ff6b6b;
+    --panel: rgba(0, 12, 22, 0.55);
+    --glass: rgba(255,255,255,0.08);
+    --glass-2: rgba(255,255,255,0.12);
+    --text: #e9fbff;
+    --muted: #a7c9d1;
+    --shadow: 0 10px 30px rgba(0,0,0,0.45);
+  }
+  * { box-sizing: border-box; }
+  html, body { 
+    height: 100%; 
+    overflow: auto; /* Enable scrolling */
+  }
+  body {
+    margin: 0;
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    color: var(--text);
+    background: radial-gradient(120% 120% at 50% 0%, var(--bg-top) 0%, var(--bg-mid) 50%, var(--bg-bottom) 100%);
+    min-height: 100vh; /* Ensure body takes full height */
+  }
+
+  /* Back button */
+  .back-btn {
+    position: fixed;
+    top: 12px;
+    left: 24px;
+    background: #203c34;
+    color: #fff;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid #305248;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    z-index: 1000;
+    text-decoration: none;
+    display: inline-block;
+  }
+  .back-btn:hover { background: #285448; }
+
+  /* Subtle animated caustics */
+  .caustics {
+    position: fixed; inset: -20vmax; pointer-events: none;
+    background: 
+      radial-gradient(circle at 30% 20%, rgba(255,255,255,0.06), transparent 40%),
+      radial-gradient(circle at 70% 10%, rgba(255,255,255,0.05), transparent 40%),
+      radial-gradient(circle at 50% 50%, rgba(255,255,255,0.04), transparent 50%);
+    filter: blur(20px) contrast(120%);
+    animation: drift 18s linear infinite alternate;
+  }
+  @keyframes drift { to { transform: translate3d(2vw, -1vh, 0) scale(1.05); } }
+
+  /* Bubbles */
+  .bubbles { position: fixed; inset: 0; overflow: hidden; pointer-events: none; }
+  .bubble {
+    position: absolute; bottom: -10vmin; width: 1vmin; height: 1vmin;
+    border-radius: 50%; background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9), rgba(255,255,255,0.1) 60%);
+    animation: rise var(--dur) linear infinite;
+    opacity: .5;
+  }
+  @keyframes rise { to { transform: translateY(-120vh) translateX(var(--dx, 0)); opacity: 0; } }
+
+  /* Atlantis silhouette */
+  .atlantis {
+    position: fixed; left: 50%; bottom: -5vmin; width: 160vmin; height: 45vmin; transform: translateX(-50%);
+    background:
+      radial-gradient(60vmin 30vmin at 50% 90%, rgba(0,0,0,0.25), transparent 70%),
+      linear-gradient(to top, rgba(0,0,0,0.35), transparent 65%),
+      url('data:image/svg+xml;utf8,\
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 400">\
+        <g fill="%23000" fill-opacity="0.22">\
+          <path d="M0 350h1200v50H0z"/>\
+          <path d="M80 330h80v20H80zM200 310h60v40h-60zM340 300h40v50h-40zM480 290h50v60h-50zM600 270h80v80h-80zM760 300h40v50h-40zM900 310h70v40h-70zM1040 330h60v20h-60z"/>\
+          <path d="M595 210h10v200h-10zM570 230h60v10h-60z"/>\
+          <circle cx="605" cy="245" r="6"/>\
+        </g>\
+      </svg>');
+    background-repeat: no-repeat; background-position: center bottom; background-size: contain;
+    filter: blur(2px);
+  }
+
+  .wrap {
+    position: relative; z-index: 2; display: grid; place-items: center; min-height: 100vh; padding: 24px;
+  }
+
+  .game {
+    width: min(1060px, 95vw);
+    backdrop-filter: blur(6px) saturate(120%);
+    background: linear-gradient(180deg, var(--glass-2), var(--glass));
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 24px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    margin: 60px 0; /* Add margin for scrolling */
+  }
+
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .logo {
+    width: 40px; height: 40px; border-radius: 12px; background: conic-gradient(from 0deg, #19fafc, #0df, #a7f8ff, #19fafc);
+    box-shadow: inset 0 0 14px rgba(255,255,255,0.6), 0 6px 18px rgba(0,0,0,0.25);
+    position: relative;
+  }
+  .logo::after { content: ""; position: absolute; inset: 3px; border-radius: 9px; background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.6), rgba(255,255,255,0.2)); }
+  .title { font-weight: 800; letter-spacing: 0.5px; text-shadow: 0 2px 10px rgba(0,0,0,0.35); }
+  .meter { display: flex; gap: 14px; align-items: center; }
+  .pill { padding: 8px 12px; border-radius: 999px; background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.12); font-weight: 600; }
+  .pill strong { color: var(--aqua); }
+
+  .reels {
+    position: relative; display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; padding: 16px; background: linear-gradient(180deg, rgba(0,0,0,0.25), rgba(0,0,0,0.1));
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .reel {
+    background: rgba(0,0,0,0.35); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
+    height: min(52vw, 460px);
+    display: grid; grid-template-rows: 1fr; align-items: center; justify-items: stretch; position: relative;
+  }
+
+  .strip { position: absolute; left: 0; right: 0; will-change: transform; }
+  .cell { height: calc(100% / 3); display: grid; place-items: center; }
+
+  .symbol {
+    width: 86%; height: 86%; display: grid; place-items: center; border-radius: 20px; text-align: center;
+    font-size: clamp(26px, 6.2vw, 54px); font-weight: 900; letter-spacing: 1px;
+    box-shadow: inset 0 -6px 14px rgba(0,0,0,0.35), inset 0 2px 18px rgba(255,255,255,0.12);
+    border: 1px solid rgba(255,255,255,0.12);
+  }
+  .SHELL { background: linear-gradient(180deg, #ffe4f8, #f7b1ff); color: #741a8a; }
+  .FISH  { background: linear-gradient(180deg, #e0fff9, #9cf7e6); color: #045b49; }
+  .TRIDENT { background: linear-gradient(180deg, #e8fff6, #b0ffd5); color: #015f2b; }
+  .PEARL { background: linear-gradient(180deg, #fff7e0, #ffd895); color: #6b3d00; }
+  .CHEST { background: linear-gradient(180deg, #ffd9d9, #ff9b9b); color: #6a0303; }
+  .CROWN { background: linear-gradient(180deg, #fbffe0, #fff178); color: #7a5b00; }
+  .WILD  { background: linear-gradient(180deg, #c7f2ff, #54d3ff); color: #013b66; }
+  .SCATTER { background: linear-gradient(180deg, #e6e6ff, #bcbcff); color: #1b1b7a; }
+
+  .controls { display: grid; grid-template-columns: 1.2fr 1fr 1fr 1fr; gap: 12px; padding: 16px; align-items: center; }
+  .btn, .select, .input {
+    appearance: none; border: 1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.06);
+    color: var(--text); border-radius: 14px; padding: 14px 16px; font-weight: 700; letter-spacing: .3px;
+    box-shadow: var(--shadow); cursor: pointer; transition: transform .04s ease, filter .2s ease, background .2s ease;
+  }
+  .btn:hover { filter: brightness(1.1); }
+  .btn:active { transform: translateY(1px); }
+  .btn.primary { background: linear-gradient(180deg, #20e6ff, #13a1ff); color: #00131f; border: none; text-shadow: 0 1px 0 rgba(255,255,255,0.3); }
+  .btn.secondary { background: rgba(0,0,0,0.45); }
+  .select, .input { width: 100%; }
+  .status { text-align: right; font-weight: 700; color: var(--muted); }
+  .status.win { color: var(--win); }
+  .status.lose { color: var(--lose); }
+
+  /* Custom bet input styling */
+  .bet-input-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .bet-input-container::before {
+    content: '$';
+    position: absolute;
+    left: 16px;
+    color: var(--muted);
+    font-weight: 700;
+    z-index: 1;
+  }
+  .bet-input {
+    padding-left: 28px !important;
+    text-align: right;
+    font-size: 16px;
+    font-weight: 700;
+    caret-color: var(--aqua);
+  }
+  .bet-input:focus {
+    outline: none;
+    border-color: var(--aqua);
+    box-shadow: 0 0 0 2px rgba(32, 230, 255, 0.2);
+    background: rgba(255,255,255,0.1);
+  }
+  .bet-input.invalid {
+    border-color: var(--lose);
+    box-shadow: 0 0 0 2px rgba(255, 107, 107, 0.2);
+  }
+  
+  /* Quick bet buttons */
+  .quick-bets {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+  }
+  .quick-bet-btn {
+    padding: 6px 10px;
+    font-size: 12px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .quick-bet-btn:hover {
+    background: rgba(255,255,255,0.12);
+    color: var(--text);
+  }
+  .quick-bet-btn.active {
+    background: var(--aqua);
+    color: #00131f;
+    border-color: var(--aqua);
+  }
+
+  .paytable { padding: 12px 18px 20px; font-size: 14px; color: var(--muted); display: grid; gap: 6px; }
+  .paytable details { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 14px; padding: 10px 12px; }
+  .paytable summary { cursor: pointer; font-weight: 800; color: var(--text); }
+  .lines { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; margin-top: 10px; }
+  .line { height: 6px; border-radius: 999px; background: rgba(255,255,255,0.18); position: relative; overflow: hidden; }
+  .line::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, var(--aqua), transparent); animation: sweep 2.8s linear infinite; }
+  @keyframes sweep { from { transform: translateX(-100%);} to { transform: translateX(100%);} }
+
+  .highlight { outline: 3px solid var(--accent); box-shadow: 0 0 0 4px rgba(255, 211, 107, 0.22) inset; }
+
+  @media (max-width: 760px) {
+    .controls { grid-template-columns: 1fr 1fr; grid-auto-rows: minmax(44px, auto); }
+    .status { grid-column: 1 / -1; text-align: center; }
+    .bet-input-container::before { left: 12px; }
+    .bet-input { padding-left: 24px !important; }
+    .quick-bets { justify-content: center; }
+    .game { margin: 50px 0; }
+  }
+</style>
+</head>
+<body>
+  <!-- Back button - käytä <a> tagia paremman navigoinnin takia -->
+  <a href="browse.html" class="back-btn">← Back to Games</a>
+
+  <div class="caustics"></div>
+  <div class="bubbles" id="bubbles"></div>
+  <div class="atlantis"></div>
+
+  <div class="wrap">
+    <div class="game" id="game">
+      <div class="header">
+        <div class="brand">
+          <div class="logo" aria-hidden="true"></div>
+          <div>
+            <div class="title">Atlantis Aqua Slots</div>
+            <div style="font-size:12px;color:var(--muted)">Underwater Theme · 5×3</div>
+          </div>
+        </div>
+        <div class="meter">
+          <div class="pill">Balance: <strong id="balance">0.00</strong></div>
+          <div class="pill">Bet: <strong id="bet">1.00</strong></div>
+        </div>
+      </div>
+
+      <div class="reels" id="reels"></div>
+
+      <div class="controls">
+        <div>
+          <div class="bet-input-container">
+            <input type="text" class="input bet-input" id="betInput" value="1.00" aria-label="Bet amount" inputmode="decimal">
+          </div>
+          <div class="quick-bets">
+            <button class="quick-bet-btn" data-bet="0.10">0.10</button>
+            <button class="quick-bet-btn" data-bet="0.25">0.25</button>
+            <button class="quick-bet-btn" data-bet="0.50">0.50</button>
+            <button class="quick-bet-btn active" data-bet="1.00">1.00</button>
+            <button class="quick-bet-btn" data-bet="2.00">2.00</button>
+            <button class="quick-bet-btn" data-bet="5.00">5.00</button>
+          </div>
+        </div>
+        <button class="btn secondary" id="autoplay">Autoplay ▷</button>
+        <button class="btn secondary" id="maxbet">Max Bet</button>
+        <button class="btn primary" id="spin">SPIN</button>
+        <div class="status" id="status">Good luck!</div>
+      </div>
+
+      <div class="paytable">
+        <details>
+          <summary>Payouts & Rules</summary>
+          <div>
+            • 5 reels × 3 rows. Left‑to‑right wins. <br/>
+            • <b>WILD</b> substitutes for all except <b>SCATTER</b>. <br/>
+            • <b>SCATTER</b> pays anywhere (3+ to win).<br/>
+            • Highest win paid.
+          </div>
+          <div style="margin-top:8px">
+            <b>Symbol payouts</b> (5/4/3 of a kind — in credits):<br/>
+            WILD 500/100/10, CROWN 250/50/5, CHEST 150/30/3, PEARL 100/25/2, TRIDENT 80/20/2, FISH 60/15/1, SHELL 40/10/1, SCATTER 100x/20x/2x (total bet).
+          </div>
+        </details>
+      </div>
+    </div>
+  </div>
+
+<!-- Include auth.js -->
+<script src="auth.js"></script>
+
+<script>
+(() => {
+  const $ = sel => document.querySelector(sel);
+  const $$ = sel => [...document.querySelectorAll(sel)];
+
+  const balanceEl = $('#balance');
+  const betEl = $('#bet');
+  const reelsEl = $('#reels');
+  const statusEl = $('#status');
+  const betInput = $('#betInput');
+  const spinBtn = $('#spin');
+  const maxBetBtn = $('#maxbet');
+  const autoBtn = $('#autoplay');
+
+  // Game state
+  let balance = 0.00;
+  let betAmount = parseFloat(betInput.value);
+  let spinning = false;
+  let autoplay = false;
+
+  // Symbol definitions - made rarer for harder wins
+  const SYM = {
+    WILD: 'WILD', CROWN: 'CROWN', CHEST: 'CHEST', PEARL: 'PEARL',
+    TRIDENT: 'TRIDENT', FISH: 'FISH', SHELL: 'SHELL', SCATTER: 'SCATTER'
+  };
+  const SYMBOLS = [SYM.WILD, SYM.CROWN, SYM.CHEST, SYM.PEARL, SYM.TRIDENT, SYM.FISH, SYM.SHELL, SYM.SCATTER];
+  
+  // Much lower weights for high-paying symbols to make winning harder
+  const WEIGHTS = {
+    WILD: 1,      // Very rare
+    CROWN: 2,     // Rare
+    CHEST: 3,     // Uncommon
+    PEARL: 4,     // Uncommon
+    TRIDENT: 6,   // Somewhat common
+    FISH: 10,     // Common
+    SHELL: 12,    // Very common
+    SCATTER: 2    // Rare
+  };
+  
+  // Lower payouts to make winning harder
+  const PAY = {
+    WILD:   {3:10, 4:100, 5:500},
+    CROWN:  {3:5, 4:50, 5:250},
+    CHEST:  {3:3, 4:30, 5:150},
+    PEARL:  {3:2, 4:25, 5:100},
+    TRIDENT:{3:2, 4:20, 5:80},
+    FISH:   {3:1, 4:15, 5:60},
+    SHELL:  {3:1, 4:10, 5:40},
+    SCATTER:{3:2, 4:20, 5:100} // pays on total bet (handled separately)
+  };
+
+  // Single payline (simplified - removed multiple lines)
+  const PAYLINE = [1,1,1,1,1]; // Middle row only
+
+  // Create weighted reels
+  function weightedBag() {
+    const bag = [];
+    for (const s of SYMBOLS) {
+      for (let i = 0; i < WEIGHTS[s]; i++) bag.push(s);
+    }
+    return bag;
+  }
+  const REEL_BAGS = Array.from({length:5}, weightedBag);
+
+  // Build DOM for reels
+  const rows = 3; const cols = 5;
+  const reelStrips = [];
+  for (let c = 0; c < cols; c++) {
+    const reel = document.createElement('div');
+    reel.className = 'reel';
+    const strip = document.createElement('div');
+    strip.className = 'strip';
+    reel.appendChild(strip);
+    reelsEl.appendChild(reel);
+    reelStrips.push(strip);
+  }
+
+  // Utility to create a symbol node
+  function symNode(type){
+    const cell = document.createElement('div'); cell.className = 'cell';
+    const s = document.createElement('div'); s.className = `symbol ${type}`; s.textContent = iconFor(type);
+    s.setAttribute('data-type', type);
+    cell.appendChild(s); return cell;
+  }
+  function iconFor(type){
+    switch(type){
+      case SYM.WILD: return 'WILD';
+      case SYM.CROWN: return '👑';
+      case SYM.CHEST: return '🪙';
+      case SYM.PEARL: return '🦪';
+      case SYM.TRIDENT: return '🔱';
+      case SYM.FISH: return '🐟';
+      case SYM.SHELL: return '🐚';
+      case SYM.SCATTER: return '⚓';
+      default: return '❓';
+    }
+  }
+
+  // Fill a reel with N visible + buffer cells so we can animate scrolling
+  function fillStrip(strip, symbols){
+    strip.innerHTML = '';
+    const total = symbols.length;
+    for (let i = 0; i < total; i++) strip.appendChild(symNode(symbols[i]));
+    strip.style.top = '0px';
+  }
+
+  // Initial symbols
+  let visible = Array.from({length: cols}, () => Array.from({length: rows}, () => randomSym()));
+  function renderVisible(){
+    for (let c = 0; c < cols; c++) {
+      const strip = reelStrips[c];
+      const set = [...visible[c]]; // exactly 3 shown
+      fillStrip(strip, set);
+      const reel = strip.parentElement;
+      const h = reel.clientHeight; strip.style.height = h + 'px';
+      const cellH = h / rows; strip.style.transform = `translateY(0px)`;
+      // ensure cell heights are consistent
+      [...strip.children].forEach(ch => ch.style.height = cellH + 'px');
+    }
+  }
+
+  function randomSym(){
+    const bag = REEL_BAGS[Math.floor(Math.random()*REEL_BAGS.length)];
+    return bag[Math.floor(Math.random()*bag.length)];
+  }
+
+  // Initialize balance from backend
+  async function loadUserAndBalance(){
+    try {
+      const user = await getCurrentUser();
+      if (user) {
+        balance = Number(user.balance) || 0;
+        updateMeters();
+      } else {
+        // If not logged in, redirect to login
+        window.location.href = 'index.html';
+      }
+    } catch(e) {
+      console.error('Error loading user balance:', e);
+    }
+  }
+
+  // Validate bet input
+  function validateBetInput() {
+    let value = betInput.value.trim();
+    
+    // Remove any non-numeric characters except decimal point
+    value = value.replace(/[^\d.]/g, '');
+    
+    // Ensure only one decimal point
+    const parts = value.split('.');
+    if (parts.length > 2) {
+      value = parts[0] + '.' + parts.slice(1).join('');
+    }
+    
+    // Parse as float
+    let numValue = parseFloat(value);
+    
+    // Validate range
+    if (isNaN(numValue) || numValue <= 0) {
+      numValue = 0.10;
+    } else if (numValue < 0.01) {
+      numValue = 0.01;
+    } else if (numValue > 100) {
+      numValue = 100;
+    }
+    
+    // Format to 2 decimal places
+    betInput.value = numValue.toFixed(2);
+    betAmount = numValue;
+    
+    // Update active quick bet button
+    updateQuickBetButtons();
+    
+    // Update UI
+    updateMeters();
+    
+    // Visual feedback
+    betInput.classList.remove('invalid');
+    return true;
+  }
+
+  // Update quick bet buttons
+  function updateQuickBetButtons() {
+    $$('.quick-bet-btn').forEach(btn => {
+      if (parseFloat(btn.dataset.bet) === betAmount) {
+        btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+  }
+
+  // Set bet from quick bet button
+  function setBetFromButton(value) {
+    betInput.value = value;
+    validateBetInput();
+  }
+
+  // Spin logic
+  async function spin(){
+    if (spinning) return; // throttle
+    
+    // Validate bet input before spinning
+    if (!validateBetInput()) {
+      flashStatus('Invalid bet amount', 'lose');
+      return;
+    }
+    
+    const totalBet = betAmount;
+    if (balance < totalBet) { 
+      flashStatus('Insufficient balance', 'lose'); 
+      autoplay=false; 
+      updateAuto(); 
+      return; 
+    }
+
+    spinning = true;
+    setButtons();
+    
+    // Deduct bet from balance immediately
+    balance -= totalBet;
+    updateMeters();
+    
+    statusEl.textContent = 'Spinning…'; 
+    statusEl.className = 'status';
+
+    // Clear highlights
+    $$('.symbol').forEach(n => n.classList.remove('highlight'));
+
+    const results = [];
+    const promises = [];
+    for (let c = 0; c < cols; c++) {
+      const reel = reelStrips[c].parentElement;
+      const strip = reelStrips[c];
+      const h = reel.clientHeight; const cellH = h / rows;
+
+      // Decide outcomes for this reel (3 visible)
+      const out = [randomSym(), randomSym(), randomSym()];
+      results.push(out);
+
+      // Prepare a scrolling strip: clone current + buffer + outcome at end
+      const buffer = 8 + Math.floor(Math.random()*4); // different spin lengths
+      const seq = [];
+      for (let i=0;i<buffer;i++) seq.push(randomSym());
+      seq.push(...out);
+      fillStrip(strip, seq);
+      [...strip.children].forEach(ch => ch.style.height = cellH + 'px');
+
+      const travel = (seq.length - rows) * cellH; // pixels to move to land with last 3 visible
+      const duration = 900 + c*150 + Math.random()*300; // staggered
+
+      promises.push(animTo(strip, -travel, duration, easeOutCubic));
+    }
+
+    await Promise.all(promises);
+
+    // Update visible grid from results
+    visible = results.map(col => [...col]);
+    renderVisible();
+
+    // Evaluate wins
+    const evalRes = evaluate(results);
+    const won = evalRes.totalWin;
+
+    // Save game result to backend
+    const result = await saveGamePlay('slots', totalBet, won);
+    if (result) {
+      // Update balance from backend response
+      balance = result.balance;
+    } else {
+      // If save failed, add winnings locally
+      balance += won;
+    }
+    
+    updateMeters();
+
+    if (won > 0) {
+      flashStatus(`You won ${fmt(won)} credits!`, 'win');
+      // highlight winning coordinates
+      evalRes.highlights.forEach(({c, r}) => {
+        const cellSym = reelStrips[c].parentElement.querySelectorAll('.symbol')[r];
+        if (cellSym) cellSym.classList.add('highlight');
+      });
+    } else {
+      flashStatus('No win. Try again!', 'lose');
+    }
+
+    spinning = false; 
+    setButtons();
+    if (autoplay) setTimeout(spin, 600);
+  }
+
+  function evaluate(grid){
+    // grid: [col][row]
+    let totalWin = 0; 
+    const highlights = [];
+
+    // Scatter pays anywhere (3+)
+    let scatters = 0;
+    for (let c=0;c<cols;c++) for (let r=0;r<rows;r++) if (grid[c][r]===SYM.SCATTER) scatters++;
+    if (scatters >= 3) {
+      const mult = PAY.SCATTER[Math.min(5, scatters)] ?? PAY.SCATTER[3];
+      totalWin += mult * betAmount;
+      // mark all scatters
+      for (let c=0;c<cols;c++) for (let r=0;r<rows;r++) if (grid[c][r]===SYM.SCATTER) highlights.push({c,r});
+    }
+
+    // Single payline win (middle row)
+    const line = PAYLINE;
+    // Starting symbol (allow wilds to extend)
+    const firstPos = line[0];
+    const first = grid[0][firstPos];
+
+    let runSym = first === SYM.WILD ? null : first; // null => need first non-wild from left
+    let count = 0; 
+    const coords = [];
+
+    for (let c=0;c<cols;c++){
+      const r = line[c];
+      const s = grid[c][r];
+      if (runSym === null) {
+        // define when we hit first non-wild (or wild continues)
+        if (s === SYM.WILD) { count++; coords.push({c,r}); continue; }
+        runSym = s; // lock in
+      }
+      if (s === runSym || s === SYM.WILD) { count++; coords.push({c,r}); }
+      else break;
+    }
+
+    if (count >= 3) {
+      const payTbl = PAY[runSym];
+      if (payTbl) {
+        const base = payTbl[Math.min(count,5)] || 0;
+        const lineWin = base * betAmount;
+        totalWin += lineWin;
+        highlights.push(...coords.slice(0, Math.min(count,5)));
+      }
+    }
+
+    return { totalWin: Math.round(totalWin*100)/100, highlights };
+  }
+
+  // Animation helper
+  function animTo(el, toY, duration, easing){
+    return new Promise(res => {
+      const from = parseFloat(el.style.transform.replace(/translateY\(([-0-9.]+)px\)/,'$1')) || 0;
+      const start = performance.now();
+      function frame(now){
+        const t = Math.min(1, (now - start)/duration);
+        const k = easing(t);
+        const y = from + (toY - from) * k;
+        el.style.transform = `translateY(${y}px)`;
+        if (t < 1) requestAnimationFrame(frame); else res();
+      }
+      requestAnimationFrame(frame);
+    });
+  }
+  const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
+
+  // UI utils
+  function updateMeters(){
+    balanceEl.textContent = fmt(balance);
+    betEl.textContent = fmt(betAmount);
+  }
+  function fmt(n){ return Number(n).toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2}); }
+  function flashStatus(text, cls){ statusEl.textContent = text; statusEl.className = `status ${cls||''}`; }
+  function setButtons(){
+    spinBtn.disabled = spinning;
+    maxBetBtn.disabled = spinning;
+    betInput.disabled = spinning;
+    autoBtn.disabled = spinning && !autoplay;
+  }
+  function updateAuto(){ autoBtn.textContent = autoplay ? 'Autoplay ▍▍' : 'Autoplay ▷'; }
+
+  // Controls
+  spinBtn.addEventListener('click', spin);
+  maxBetBtn.addEventListener('click', () => {
+    setBetFromButton('5.00');
+  });
+  betInput.addEventListener('input', validateBetInput);
+  betInput.addEventListener('blur', validateBetInput);
+  betInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      validateBetInput();
+      spin();
+    }
+  });
+  
+  // Quick bet buttons
+  $$('.quick-bet-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      setBetFromButton(btn.dataset.bet);
+    });
+  });
+  
+  autoBtn.addEventListener('click', () => { autoplay = !autoplay; updateAuto(); if (autoplay && !spinning) spin(); });
+
+  // Bubbles generator
+  function spawnBubbles(){
+    const wrap = document.getElementById('bubbles');
+    for (let i=0;i<28;i++){
+      const b = document.createElement('div'); b.className='bubble';
+      const size = 0.6 + Math.random()*1.8; b.style.width = `${size}vmin`; b.style.height = `${size}vmin`;
+      b.style.left = `${Math.random()*100}vw`; b.style.setProperty('--dx', `${(Math.random()*8-4)}vw`);
+      b.style.setProperty('--dur', `${12 + Math.random()*18}s`);
+      b.style.animationDelay = `-${Math.random()*30}s`;
+      wrap.appendChild(b);
+    }
+  }
+
+  // Start
+  window.addEventListener('resize', renderVisible);
+  spawnBubbles();
+  renderVisible();
+  loadUserAndBalance();
+  updateMeters();
+  updateQuickBetButtons();
+})();
+</script>
+</body>
+</html>

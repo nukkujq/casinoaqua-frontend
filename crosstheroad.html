@@ -1,0 +1,275 @@
+[file name]: crosstheroad.html
+[file content begin]
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Cross the Ocean</title>
+<style>
+  :root{
+    --bg:#021c29;--sea:#04394f;--deep:#012633;--circle-bg:#083c52;--accent:#f5d742;
+  }
+  html,body{height:100%;margin:0;font-family:Inter,system-ui,Arial;background:linear-gradient(180deg,#01131d,#023147);color:#e6eef8;display:flex;align-items:center;justify-content:center}
+  .wrap{width:980px;max-width:96vw;border-radius:12px;padding:12px;background:linear-gradient(180deg,rgba(255,255,255,0.03),transparent);box-shadow:0 12px 40px rgba(0,0,0,0.6)}
+  header{display:flex;justify-content:space-between;align-items:center;padding:6px 8px}
+  .title{font-weight:700;font-size:18px;color:var(--accent)}
+  .hud{display:flex;gap:10px;align-items:center}
+  .chip{background:rgba(255,255,255,0.05);padding:6px 10px;border-radius:8px;font-weight:600}
+  main{display:flex;gap:12px;align-items:flex-start;padding:8px}
+  #gameArea{position:relative;width:660px;height:320px;border-radius:10px;overflow:hidden;background:linear-gradient(180deg,var(--sea) 0%, var(--deep) 100%);box-shadow:inset 0 6px 24px rgba(0,0,0,0.6);}
+  .bubble{position:absolute;border-radius:50%;background:rgba(255,255,255,0.3);animation:rise 6s linear infinite}
+  @keyframes rise{0%{transform:translateY(100%);opacity:0}30%{opacity:1}100%{transform:translateY(-100%);opacity:0}}
+  .step{width:64px;height:64px;border-radius:50%;position:absolute;top:50%;transform:translateY(-50%);display:flex;align-items:center;justify-content:center;flex-direction:column;background:var(--circle-bg);border:3px solid rgba(255,255,255,0.06);cursor:not-allowed;user-select:none;transition:all 160ms ease;z-index:5;}
+  .step .mult{font-weight:700;font-size:13px;color:#dfffe0}
+  .step.active{cursor:pointer;border-color:var(--accent);transform:translateY(-50%) scale(1.08);box-shadow:0 8px 22px rgba(0,0,0,0.5)}
+  .step.locked{opacity:0.45}
+  #fish{position:absolute;bottom:60px;left:24px;width:60px;height:36px;z-index:10;transition:left 260ms cubic-bezier(.2,.9,.3,1), transform 160ms;pointer-events:none;}
+  .body{width:40px;height:22px;background:#ff914d;border-radius:40% 60% 60% 40%;position:absolute;left:12px;top:7px}
+  .tail{width:16px;height:18px;background:#ffb27a;clip-path:polygon(0 50%,100% 0,100% 100%);position:absolute;left:-8px;top:9px;animation:wag 0.6s infinite alternate}
+  @keyframes wag{from{transform:rotate(10deg)}to{transform:rotate(-10deg)}}
+  .eye{width:6px;height:6px;background:#000;border-radius:50%;position:absolute;right:8px;top:10px}
+  #shark{position:absolute;top:50%;left:-200px;width:180px;height:80px;z-index:15;display:none;transform:translateY(-50%);}
+  .sh-body{width:140px;height:60px;background:#4f6f82;border-radius:70px 80px 70px 70px;position:absolute;top:10px;left:20px}
+  .sh-tail{width:50px;height:50px;background:#4f6f82;clip-path:polygon(0 50%,100% 0,100% 100%);position:absolute;left:-10px;top:15px}
+  .sh-fin{width:40px;height:30px;background:#4f6f82;clip-path:polygon(50% 0,100% 100%,0 100%);position:absolute;left:60px;top:-10px}
+  .sh-eye{width:10px;height:10px;background:#fff;border-radius:50%;position:absolute;left:120px;top:22px}
+  .sh-pupil{width:5px;height:5px;background:#000;border-radius:50%;position:absolute;left:123px;top:25px}
+  .sh-mouth{width:60px;height:24px;background:#e63946;position:absolute;left:100px;top:40px;border-radius:0 0 30px 30px}
+  .sh-teeth{position:absolute;left:100px;top:40px;width:60px;height:24px;display:flex;justify-content:space-around}
+  .sh-teeth div{width:8px;height:12px;background:#fff;clip-path:polygon(50% 0,0 100%,100% 100%)}
+  .side{width:280px;display:flex;flex-direction:column;gap:8px}
+  .controls{display:flex;gap:8px;flex-wrap:wrap}
+  input[type=number]{width:80px;padding:6px;border-radius:8px;border:0;background:#0a2b3d;color:#eaf6ff;font-size:13px}
+  select{padding:6px;border-radius:8px;border:0;background:#0a2b3d;color:#eaf6ff;font-size:13px}
+  button{padding:8px 12px;border-radius:8px;border:0;background:linear-gradient(180deg,#124d5a,#0a2d35);color:#eaf6ff;cursor:pointer}
+  button:disabled{opacity:0.5;cursor:not-allowed}
+  .msg{height:30px;font-size:13px;color:transparent}
+  
+  /* Back button styles */
+  .back-btn-container { margin-bottom: 16px; }
+  .back-btn { background: linear-gradient(180deg, #124d5a, #0a2d35); color: #eaf6ff; border: 1px solid #1c6b7c; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; width: 100%; }
+  .back-btn:hover { background: linear-gradient(180deg, #166876, #0c3a43); }
+  
+  @media(max-width:980px){.wrap{padding:8px}main{flex-direction:column}.side{width:100%}#gameArea{width:100%}}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <!-- Back button -->
+    <div class="back-btn-container">
+      <button class="back-btn" onclick="goBack()">← Back to Games</button>
+    </div>
+    
+    <header>
+      <div class="title">Cross the Ocean</div>
+      <div class="hud">
+        <div class="chip" id="creditsChip">Credits: 0</div>
+        <div class="chip" id="betChip">Bet: —</div>
+      </div>
+    </header>
+    <main>
+      <div id="gameArea">
+        <div id="fish"><div class="body"></div><div class="tail"></div><div class="eye"></div></div>
+        <div id="shark"><div class="sh-body"></div><div class="sh-tail"></div><div class="sh-fin"></div><div class="sh-eye"></div><div class="sh-pupil"></div><div class="sh-mouth"></div><div class="sh-teeth"><div></div><div></div><div></div><div></div></div></div>
+      </div>
+      <aside class="side">
+        <div class="controls">
+          <input id="betInput" type="number" min="1" value="50" />
+          <select id="riskSelect">
+            <option value="low">Low Risk (10%)</option>
+            <option value="medium">Medium Risk (14%)</option>
+            <option value="high">High Risk (20%)</option>
+          </select>
+          <button id="startBtn">Start</button>
+        </div>
+        <div><button id="cashBtn" disabled>Cash Out</button></div>
+        <div class="msg" id="message"></div>
+      </aside>
+    </main>
+  </div>
+
+<!-- Include auth.js -->
+<script src="auth.js"></script>
+
+<script>
+(() => {
+  const TOTAL_STEPS=10,LOSS_INC=0.03;
+  const RISK_LEVELS={low:0.10,medium:0.14,high:0.20};
+  const gameArea=document.getElementById('gameArea');
+  const creditsChip=document.getElementById('creditsChip');
+  const betChip=document.getElementById('betChip');
+  const betInput=document.getElementById('betInput');
+  const riskSelect=document.getElementById('riskSelect');
+  const startBtn=document.getElementById('startBtn');
+  const cashBtn=document.getElementById('cashBtn');
+  const fishEl=document.getElementById('fish');
+  const sharkEl=document.getElementById('shark');
+  const messageEl=document.getElementById('message');
+  let credits=0,bet=50,inPlay=false,currentStep=0,mults=[],lossProbs=[],stepEls=[],stepX=[];
+  let BASE_LOSS=RISK_LEVELS.low;
+
+  // Initialize balance from backend
+  async function initBalance() {
+    const user = await getCurrentUser();
+    if (user) {
+      credits = user.balance;
+      updateUI();
+    } else {
+      // If not logged in, redirect to login
+      window.location.href = 'index.html';
+    }
+  }
+
+  function bubbles(){
+    for(let i=0;i<6;i++){
+      let b=document.createElement('div');b.className='bubble';
+      let s=4+Math.random()*8;b.style.width=b.style.height=s+'px';
+      b.style.left=Math.random()*100+'%';
+      b.style.animationDuration=(4+Math.random()*4)+'s';
+      gameArea.appendChild(b);
+      setTimeout(()=>b.remove(),8000);
+    }
+  }
+  setInterval(bubbles,1200);
+
+  function compute(){
+    lossProbs=[0];mults=[1];let cum=1;
+    for(let k=1;k<=TOTAL_STEPS;k++){
+      let loss=BASE_LOSS+(k-1)*LOSS_INC;
+      let surv=Math.max(0,1-loss);cum*=surv;
+      mults[k]=Number((1/cum).toFixed(2));
+      lossProbs[k]=loss;
+    }
+  }
+  function buildSteps(){
+    stepEls.forEach(e=>e.remove());stepEls=[];stepX=[];
+    let pad=40,usable=gameArea.clientWidth-pad*2,spacing=usable/TOTAL_STEPS;
+    for(let k=1;k<=TOTAL_STEPS;k++){
+      let el=document.createElement('div');el.className='step locked';
+      el.dataset.step=k;el.innerHTML='<div class="mult">'+mults[k].toFixed(2)+'x</div>';
+      let x=pad+spacing*k-32;el.style.left=x+'px';
+      gameArea.appendChild(el);stepEls.push(el);stepX[k]=x+32;
+      el.addEventListener('click',()=>clickStep(k));
+    }
+    fishEl.style.left=(pad-16)+'px';fishEl.style.opacity='1';
+    sharkEl.style.display='none';sharkEl.style.left='-200px';
+  }
+  function updateUI(){
+    creditsChip.textContent='Credits: '+credits;
+    betChip.textContent=inPlay?('Bet: '+bet+' (in play)'):'Bet: —';
+    for(let k=1;k<=TOTAL_STEPS;k++){
+      let el=stepEls[k-1];el.classList.remove('active');
+      if(!inPlay)el.classList.add('locked');
+      else{
+        if(k===currentStep+1){el.classList.remove('locked');el.classList.add('active')}
+        else el.classList.add('locked');
+      }
+      if(k<=currentStep)el.style.opacity='1';
+    }
+    cashBtn.disabled=!(inPlay&&currentStep>0);
+    startBtn.disabled=inPlay;betInput.disabled=inPlay;riskSelect.disabled=inPlay;
+  }
+  async function start(){
+    if(inPlay)return;
+    BASE_LOSS=RISK_LEVELS[riskSelect.value];
+    bet=Math.max(1,Math.floor(Number(betInput.value)||1));
+    if(bet>credits){
+      showMessage('Bet too high!', '#ff6b6b');
+      return;
+    }
+    
+    // Deduct bet from balance via backend
+    const result = await saveGamePlay('crosstheroad', bet, 0);
+    if (result) {
+      credits = result.balance;
+      inPlay=true;
+      currentStep=0;
+      compute();
+      buildSteps();
+      updateUI();
+      moveFish(0);
+      showMessage('Game started! Good luck!', '#51cf66');
+    } else {
+      showMessage('Failed to start game', '#ff6b6b');
+    }
+  }
+  function moveFish(step){
+    if(step===0){let pad=40;fishEl.style.left=(pad-16)+'px'}
+    else{let x=stepX[step];fishEl.style.left=(x-24)+'px'}
+  }
+  function clickStep(s){if(!inPlay||s!==currentStep+1)return;tryStep(s)}
+  function tryStep(s){
+    let fail=Math.random()<lossProbs[s];
+    moveFish(s);
+    setTimeout(()=>{
+      if(fail){lose(s)}else{currentStep=s;updateUI();}
+    },260);
+  }
+  function lose(s){
+    sharkEl.style.display='block';
+    sharkEl.animate([{left:'-200px'},{left:(fishEl.offsetLeft-60)+'px'}],{duration:600,fill:'forwards'});
+    setTimeout(()=>{fishEl.style.opacity='0';},500);
+    inPlay=false;
+    currentStep=s-1;
+    showMessage('Shark attack! You lost your bet.', '#ff6b6b');
+    updateUI();
+  }
+  async function cash(){
+    if(!inPlay||currentStep<=0)return;
+    let m=mults[currentStep],p=Math.round(bet*m*100)/100;
+    
+    // Save winnings to backend
+    const result = await saveGamePlay('crosstheroad', 0, p);
+    if (result) {
+      credits = result.balance;
+      inPlay=false;
+      showMessage(`Cashed out! Won $${p.toFixed(2)}!`, '#51cf66');
+    } else {
+      // If save failed, revert locally
+      credits += p;
+      showMessage('Cash out failed', '#ff6b6b');
+    }
+    updateUI();
+  }
+  
+  function showMessage(text, color) {
+    messageEl.textContent = text;
+    messageEl.style.color = color;
+    setTimeout(() => {
+      messageEl.style.color = 'transparent';
+    }, 3000);
+  }
+
+  document.addEventListener('keydown',e=>{
+    if((e.key===' '||e.key==='Spacebar')&&inPlay){
+      e.preventDefault();let n=currentStep+1;
+      if(n<=TOTAL_STEPS)clickStep(n);
+    }
+  });
+  gameArea.addEventListener('click',e=>{
+    if(!inPlay)return;
+    if(e.target===gameArea||e.target===fishEl){
+      let n=currentStep+1;if(n<=TOTAL_STEPS)clickStep(n);
+    }
+  });
+  
+  // Back button function
+  window.goBack = function() {
+    window.location.href = 'index.html';
+  };
+
+  function init(){
+    compute();
+    buildSteps();
+    initBalance();
+    startBtn.addEventListener('click',start);
+    cashBtn.addEventListener('click',cash);
+    window.addEventListener('resize',()=>{buildSteps();moveFish(currentStep);updateUI()});
+  }
+  init();
+})();
+</script>
+</body>
+</html>
+[file content end]

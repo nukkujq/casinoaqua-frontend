@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Aquatic Plinko</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+  <style>
+    :root {
+      --ink:#0f172a;
+      --sea1:#0ea5e9;
+      --sea2:#0e7490;
+      --foam: #e2f3ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: white;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, sans-serif;
+      text-align: center;
+      min-height: 100vh;
+      background: radial-gradient(1200px 600px at 50% -200px, rgba(255,255,255,0.08), transparent 60%),
+                  linear-gradient(180deg, var(--sea1) 0%, var(--sea2) 55%, var(--ink) 100%);
+    }
+    
+    /* Back button */
+    .back-btn {
+      position: fixed;
+      top: 12px;
+      left: 24px;
+      background: #203c34;
+      color: #fff;
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid #305248;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      z-index: 1000;
+    }
+    .back-btn:hover { background: #285448; }
+
+    .foam {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: .25;
+      background: radial-gradient(12px 12px at 20% 10%, var(--foam) 0 40%, transparent 41%),
+                  radial-gradient(10px 10px at 70% 5%, var(--foam) 0 40%, transparent 41%),
+                  radial-gradient(14px 14px at 40% 16%, var(--foam) 0 40%, transparent 41%),
+                  radial-gradient(11px 11px at 85% 14%, var(--foam) 0 40%, transparent 41%);
+      animation: drift 12s linear infinite;
+    }
+    @keyframes drift {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(30px); }
+    }
+    h1 {
+      margin: 16px 0 8px;
+      text-shadow: 0 2px 12px rgba(0,0,0,.35);
+    }
+    #controls {
+      margin: 10px auto 4px;
+      background: rgba(0,0,0,.25);
+      padding: 10px 12px;
+      width: min(720px, 96vw);
+      border-radius: 14px;
+      backdrop-filter: blur(6px);
+    }
+    #controls input, #controls select, #controls button {
+      margin: 6px 4px;
+      padding: 8px 10px;
+      border-radius: 10px;
+      border: none;
+    }
+    #controls button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    #plinko {
+      margin: 8px auto;
+      width: min(720px, 96vw);
+    }
+    .tag {
+      display:inline-block;
+      background: rgba(255,255,255,.12);
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      margin-left: 6px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Back button -->
+  <button class="back-btn" onclick="goBack()">← Back</button>
+
+  <h1>🌊 Aquatic Plinko <span class="tag">stronger center bias</span></h1>
+  <div id="controls">
+    Balance: $<span id="balance">0.00</span><br/>
+    Bet: <input id="bet" type="number" value="10" min="1" />
+    Risk: <select id="risk">
+      <option value="low">Low</option>
+      <option value="medium" selected>Medium</option>
+      <option value="high">High</option>
+    </select>
+    <button id="drop1">Drop 1 Ball</button>
+    <div id="lastResult">Last: None</div>
+  </div>
+  <div id="plinko"></div>
+  <div class="foam" aria-hidden="true"></div>
+
+<!-- Include auth.js -->
+<script src="auth.js"></script>
+
+<script>
+    const { Engine, Render, Runner, Bodies, World, Body, Events } = Matter;
+
+    const SCALE = 0.65;
+    const BOARD = {
+      rows: 22,
+      pegGapX: 32 * SCALE,
+      pegGapY: 34 * SCALE,
+      pegRadius: 5 * SCALE,
+      wallThickness: 24 * SCALE,
+      ballRadius: 8 * SCALE,
+    };
+    const CANVAS = { width: 720 * SCALE, height: 900 * SCALE };
+
+    const PAYOUTS_LEVELS = {
+      low: [15,10,6,4,3,2,1.5,1.2,0.9,0.5,0.9,1.2,1.5,2,3,4,6,10,15],
+      medium:[100,50,25,10,5,2,1,0.8,0.5,0.3,0.5,0.8,1,2,5,10,25,50,100],
+      high: [1000,100,40,10,7,5,2,0.2,0.2,0.2,0.2,0.2,2,5,7,10,40,100,1000]
+    };
+    const BIN_COUNT = PAYOUTS_LEVELS.medium.length;
+
+    let balance = 0;
+    let lastResult = null;
+    let currentRisk = document.getElementById("risk").value;
+    let dropping = false;
+
+    const engine = Engine.create();
+    engine.gravity.y = 0.8;
+
+    const render = Render.create({
+      element: document.getElementById("plinko"),
+      engine,
+      options: {
+        width: CANVAS.width,
+        height: CANVAS.height,
+        wireframes: false,
+        background: "transparent",
+      },
+    });
+    Render.run(render);
+    const runner = Runner.create();
+    Runner.run(runner, engine);
+
+    const t = BOARD.wallThickness;
+    const w = CANVAS.width;
+    const h = CANVAS.height;
+
+    const ground = Bodies.rectangle(w / 2, h + t / 2, w + 200, t, { isStatic: true });
+
+    // pegs
+    const pegs = [];
+    for (let row = 1; row < BOARD.rows - 1; row++) {
+      const y = 80 * SCALE + row * BOARD.pegGapY;
+      const cols = row + 1;
+      const offsetX = CANVAS.width / 2 - (row * BOARD.pegGapX) / 2;
+      for (let col = 0; col < cols; col++) {
+        const x = offsetX + col * BOARD.pegGapX;
+        pegs.push(Bodies.circle(x, y, BOARD.pegRadius, {
+          isStatic: true,
+          restitution: 0.3,
+          render: { fillStyle: "#bbf7d0" }
+        }));
+      }
+    }
+
+    const binsY = 80 * SCALE + BOARD.rows * BOARD.pegGapY + 40 * SCALE;
+    const binWidth = (CANVAS.width - BOARD.wallThickness * 2) / BIN_COUNT;
+    const dividers = [];
+    for (let i = 0; i <= BIN_COUNT; i++) {
+      const x = BOARD.wallThickness + i * binWidth;
+      const divider = Bodies.rectangle(x, binsY + 30 * SCALE, 3 * SCALE, 120 * SCALE, {
+        isStatic: true, render: { fillStyle: "white" }
+      });
+      const cap = Bodies.circle(x, binsY - 30 * SCALE, 5 * SCALE, {
+        isStatic: true, render: { fillStyle: "white" }
+      });
+      dividers.push(divider, cap);
+    }
+
+    const wallHeight = binsY - 40 * SCALE;
+    const leftWall = Bodies.rectangle(-t / 2 - 10, wallHeight / 2, t, wallHeight, { isStatic: true, render: { fillStyle: "white" } });
+    const rightWall = Bodies.rectangle(w + t / 2 + 10, wallHeight / 2, t, wallHeight, { isStatic: true, render: { fillStyle: "white" } });
+
+    World.add(engine.world, [ground, leftWall, rightWall, ...pegs, ...dividers]);
+
+    // --- Reinforced Guard Rails ---
+    const guardAngle = 0.45;
+    const guardLength = h * 1.5;
+    const guardThickness = 60 * SCALE;
+
+    const leftGuard = Bodies.rectangle(
+      BOARD.wallThickness * 0.6,
+      h / 2,
+      guardThickness,
+      guardLength,
+      { isStatic: true, angle: guardAngle, render: { visible: false } }
+    );
+
+    const rightGuard = Bodies.rectangle(
+      w - BOARD.wallThickness * 0.6,
+      h / 2,
+      guardThickness,
+      guardLength,
+      { isStatic: true, angle: -guardAngle, render: { visible: false } }
+    );
+
+    World.add(engine.world, [leftGuard, rightGuard]);
+
+    const pegSound = new Audio("https://cdn.pixabay.com/download/audio/2021/08/04/audio_2c05d1.mp3?filename=pop-94319.mp3");
+    const winSound = new Audio("https://cdn.pixabay.com/download/audio/2021/09/01/audio_89026b.mp3?filename=success-1-6297.mp3");
+
+    const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+    const getPayouts = () => PAYOUTS_LEVELS[currentRisk];
+
+    const SAFETY = {
+      ceilingPad: 6 * SCALE,
+      minDownVY: 0.12,
+      xPad: 1.5 * SCALE,
+      postHitRestitution: 0.15
+    };
+
+    const FIELD_MIN_X = BOARD.wallThickness + BOARD.ballRadius + SAFETY.xPad;
+    const FIELD_MAX_X = w - BOARD.wallThickness - BOARD.ballRadius - SAFETY.xPad;
+
+    Events.on(engine, "beforeUpdate", () => {
+      for (const b of engine.world.bodies) {
+        if (b.label !== "ball" || b._firstHitY == null) continue;
+        const ceiling = b._firstHitY - SAFETY.ceilingPad;
+        if (b.position.y < ceiling) {
+          Body.setPosition(b, { x: b.position.x, y: ceiling });
+        }
+        if (b.velocity.y < 0) {
+          Body.setVelocity(b, { x: b.velocity.x, y: SAFETY.minDownVY });
+        }
+        if (b.position.x < FIELD_MIN_X) {
+          Body.setPosition(b, { x: FIELD_MIN_X, y: b.position.y });
+          if (b.velocity.x < 0) Body.setVelocity(b, { x: 0, y: b.velocity.y });
+        } else if (b.position.x > FIELD_MAX_X) {
+          Body.setPosition(b, { x: FIELD_MAX_X, y: b.position.y });
+          if (b.velocity.x > 0) Body.setVelocity(b, { x: 0, y: b.velocity.y });
+        }
+      }
+    });
+
+    // --- STRONGER CENTER BIAS ---
+    Events.on(engine, "collisionStart", (event) => {
+      for (const { bodyA, bodyB } of event.pairs) {
+        const ball = [bodyA, bodyB].find(b => b.label === "ball");
+        const peg = [bodyA, bodyB].find(b => pegs.includes(b));
+        if (!ball || !peg) continue;
+
+        if (ball._firstHitY == null) {
+          ball._firstHitY = ball.position.y;
+          ball.restitution = Math.min(ball.restitution ?? 0.3, SAFETY.postHitRestitution);
+        }
+
+        try { pegSound.currentTime = 0; pegSound.play(); } catch {}
+        const center = CANVAS.width / 2;
+
+        if (ball._behavior == null) {
+          // slightly stronger center bias: make "edge" rarer
+          ball._behavior = Math.random() < 0.01 ? "edge" : "center"; // ~1% edge
+        }
+
+        let vx = ball.velocity.x;
+        if (ball._behavior === "center") {
+          // increase the pull toward center a tad and reduce jitter
+          const bias = (center - ball.position.x) * 0.05; // slightly stronger pull
+          const jitter = (Math.random() - 0.5) * 0.12;     // smaller randomness
+          vx = clamp(vx + bias + jitter, -2, 2);
+        } else {
+          let outward = Math.sign(ball.position.x - center);
+          if (outward === 0) {
+            outward = Math.random() < 0.5 ? -1 : 1;
+          }
+          const kick = 1.0 * outward;                     // slightly weaker edge push
+          const spice = (Math.random() - 0.5) * 0.2;
+          vx = clamp(vx + kick + spice, -2.5, 2.5);
+        }
+
+        Body.setVelocity(ball, { x: vx, y: ball.velocity.y });
+      }
+    });
+
+    engine._binsY = binsY;
+    engine._binWidth = binWidth;
+
+    // Back button function
+    function goBack() {
+      window.location.href = 'index.html'; // Change this to your main games page
+    }
+
+    // Initialize balance from backend
+    async function loadUserAndBalance(){
+      try {
+        const user = await getCurrentUser();
+        if (user) {
+          balance = Number(user.balance) || 0;
+          document.getElementById("balance").innerText = balance.toFixed(2);
+        } else {
+          // If not logged in, redirect to login
+          window.location.href = 'index.html';
+        }
+      } catch(e) {
+        console.error('Error loading user balance:', e);
+      }
+    }
+
+    document.getElementById("risk").addEventListener("change", (e) => {
+      currentRisk = e.target.value;
+    });
+
+    // --- DROPPING WITH COOLDOWN ---
+    const btn1 = document.getElementById("drop1");
+
+    function setCooldown() {
+      btn1.disabled = true;
+      setTimeout(() => {
+        btn1.disabled = false;
+      }, 500);
+    }
+
+    async function dropBall(count = 1) {
+      if (dropping) return;
+      dropping = true;
+      
+      setCooldown();
+
+      const bet = +document.getElementById("bet").value;
+      if (bet <= 0 || bet * count > balance) {
+        dropping = false;
+        return;
+      }
+      
+      // Deduct bet from balance immediately
+      balance = +(balance - bet * count).toFixed(2);
+      document.getElementById("balance").innerText = balance.toFixed(2);
+
+      const spawnY = 30 * SCALE;
+      const balls = [];
+      for (let i = 0; i < count; i++) {
+        // spawn nearer to the center (reduced horizontal jitter)
+        const spawnX = CANVAS.width / 2 + (Math.random() - 0.5) * 2;
+        const ball = Bodies.circle(spawnX, spawnY, BOARD.ballRadius, {
+          label: "ball",
+          restitution: 0.3,
+          frictionAir: 0.01,
+          collisionFilter: { group: -1 },
+          render: { fillStyle: "#38bdf8" },
+        });
+        // make "edge" even rarer at creation time as well
+        ball._behavior = Math.random() < 0.01 ? "edge" : "center";
+        ball._firstHitY = null;
+        balls.push(ball);
+      }
+      World.add(engine.world, balls);
+
+      const watcher = setInterval(() => {
+        if (balls.length === 0) { 
+          clearInterval(watcher); 
+          dropping = false;
+          return; 
+        }
+        for (let i = balls.length - 1; i >= 0; i--) {
+          const b = balls[i];
+          if (!engine.world.bodies.includes(b)) {
+            balls.splice(i,1); 
+            continue;
+          }
+          if (b.position.y > engine._binsY - 10 * SCALE) {
+            const binIdx = Math.floor((b.position.x - BOARD.wallThickness) / engine._binWidth);
+            const idx = Math.max(0, Math.min(BIN_COUNT - 1, binIdx));
+            const multiplier = getPayouts()[idx] ?? 0;
+            const win = +(bet * multiplier).toFixed(2);
+            
+            // Save game result to backend
+            saveGamePlay("plinko", bet, win).then(result => {
+              if (result) {
+                // Update balance from backend response
+                balance = result.balance;
+                document.getElementById("balance").innerText = balance.toFixed(2);
+              }
+            });
+
+            lastResult = { idx, multiplier, win };
+            document.getElementById("lastResult").innerText = `Last: Bin ${idx + 1}, ×${multiplier}, Won ${win}`;
+            if (win > 0) { try { winSound.play(); } catch {} }
+            World.remove(engine.world, b);
+            balls.splice(i,1);
+          }
+        }
+      }, 50);
+    }
+
+    btn1.addEventListener("click", () => dropBall(1));
+
+    Events.on(render, "afterRender", () => {
+      const ctx = render.context;
+      ctx.fillStyle = "white";
+      ctx.font = `${10 * SCALE}px sans-serif`;
+      ctx.textAlign = "center";
+      const payouts = getPayouts();
+      for (let i = 0; i < BIN_COUNT; i++) {
+        const x = BOARD.wallThickness + i * engine._binWidth + engine._binWidth / 2;
+        const y = binsY - 40 * SCALE;
+        ctx.fillText("×" + payouts[i], x, y);
+      }
+    });
+
+    // Initialize the game
+    loadUserAndBalance();
+</script>
+</body>
+</html>
