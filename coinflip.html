@@ -27,6 +27,21 @@
     .title{font-weight:700; letter-spacing:.2px; margin:2px 0 12px 0; color:#e8f3ff}
     .label{color:var(--muted); font-size:13px; margin-bottom:8px}
 
+    .balance-display {
+      background: rgba(11, 25, 49, 0.8);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-weight: 700;
+      font-size: 16px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      backdrop-filter: blur(10px);
+      margin-bottom: 16px;
+    }
+
     .betbox{background:#0b1320; border:1px solid rgba(255,255,255,.08); padding:12px; border-radius:12px; display:flex; align-items:center; gap:10px}
     .betbox input{flex:1; background:transparent; border:none; color:#e9f4ff; font-size:16px; outline:none}
     .betbox.disabled{opacity:.6}
@@ -43,7 +58,7 @@
 
     .btn-primary{display:block; width:100%; margin-top:12px; background:#1b66ff; border:none; color:white; font-weight:700; border-radius:12px; padding:12px; cursor:pointer; box-shadow:0 12px 24px rgba(27,102,255,.22); transition:filter .2s ease, transform .06s ease}
     .btn-primary:active{transform:translateY(1px)}
-    .btn-primary:disabled{background:#3a3f46; cursor:not-allowed; box-shadow:none}
+    .btn-primary:disabled{background:#5a7dc0; cursor:not-allowed; box-shadow:none; opacity:.7}
 
     .stage{height:100%; display:flex; align-items:center; justify-content:center}
     .coin3d{width:200px; height:200px; perspective:1200px; position:relative}
@@ -64,6 +79,7 @@
     .pt{width:16px; height:16px; border-radius:50%; box-shadow: inset 0 0 6px rgba(0,0,0,.5)}
     .pt.blue{background: radial-gradient(circle at 30% 30%, #d8f5ff, #6ec9ea 70%, #0c5576)}
     .pt.silver{background: radial-gradient(circle at 30% 30%, #ffffff, #aeb9c5 70%, #545e68)}
+    .pt.hidden{background: radial-gradient(circle at 30% 30%, #2a3b4e, #1e2a38 70%, #121b2b); border: 1px solid rgba(255,255,255,.1);}
 
     .ladder{position:absolute; left:22px; right:22px; bottom:22px; display:flex; gap:12px; justify-content:flex-start; overflow-x:auto; padding:4px 6px}
     .ladder::-webkit-scrollbar{height:8px}
@@ -71,37 +87,25 @@
     .bubble{min-width:92px; height:48px; border-radius:14px; display:flex; align-items:center; justify-content:center; background: rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); color:#cfe7ff; font-weight:700; font-size:14px; scroll-snap-align:center}
     .bubble.win{box-shadow: 0 0 0 2px rgba(53,224,161,.4) inset, 0 0 18px rgba(53,224,161,.35); color:#d8ffee}
     .bubble.lose{box-shadow: 0 0 0 2px rgba(255,107,107,.45) inset, 0 0 18px rgba(255,107,107,.35); color:#ffdede}
-
-    /* Back button */
-    .back-btn {
-      position: absolute;
-      top: 15px;
-      left: 15px;
-      padding: 6px 14px;
-      border: none;
-      border-radius: 8px;
-      background: #2f80ed;
-      color: #fff;
-      cursor: pointer;
-      font-weight: 600;
-      box-shadow: 0 0 10px rgba(0,0,0,0.4);
-      z-index: 100;
+    
+    #backBtn {
+      background: linear-gradient(180deg, #5a1212, #350a0a);
+      margin-top: 10px;
     }
-    .back-btn:hover { background:#2565c7; }
-
-    /* Loading spinner */
-    .spinner{display:none; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:100; color:var(--accent); font-size:18px;}
-    .spinner.active{display:block;}
   </style>
 </head>
 <body>
-  <!-- Back button -->
-  <button class="back-btn" onclick="goBack()">← Back</button>
-
   <div class="ocean"><div class="wave w1"></div><div class="wave w2"></div><div class="wave w3"></div></div>
 
   <div class="wrap">
     <div class="panel left">
+      <!-- Balance display moved here -->
+      <div class="balance-display">
+        <span>Balance:</span>
+        <span id="balance">Loading...</span>
+        <span>💧</span>
+      </div>
+      
       <div class="title">Bet Amount</div>
       <div class="betbox" id="betbox">
         <span class="badge">💧</span>
@@ -135,7 +139,8 @@
           </div>
         </div>
       </div>
-      <button class="btn-primary" id="betBtn" disabled>Please Login</button>
+      <button class="btn-primary" id="betBtn">Bet</button>
+      <button class="btn-primary" id="backBtn">Back to Games</button>
     </div>
 
     <div class="panel center">
@@ -165,46 +170,135 @@
     <div class="ladder" id="ladder"></div>
   </div>
 
-  <!-- Loading spinner -->
-  <div id="spinner" class="spinner">Loading...</div>
-
-  <!-- Include auth.js -->
-  <script src="auth.js"></script>
-
   <script>
+    // Include auth.js functions
+    const SERVER_URL = 'https://casinoaqua-server.onrender.com';
+
+    function getToken() {
+      return localStorage.getItem('token');
+    }
+
+    async function getCurrentUser() {
+      const token = getToken();
+      if (!token) return null;
+      try {
+        const res = await fetch(`${SERVER_URL}/me`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data && data.success) {
+          localStorage.setItem('userBalance', String(data.user.balance || 0));
+          return data.user;
+        }
+      } catch (e) {
+        console.error('getCurrentUser error', e);
+      }
+      return null;
+    }
+
+    async function saveGamePlay(game, bet, win) {
+      const token = getToken();
+      if (!token) return null;
+      try {
+        const res = await fetch(`${SERVER_URL}/play`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ game, bet, win })
+        });
+        const data = await res.json();
+        if (data && data.success) {
+          const newBalance = data.user.balance;
+          // Päivitä UI ja localStorage
+          const el = document.getElementById('balance');
+          if (el) el.innerText = newBalance.toFixed(2);
+          localStorage.setItem('userBalance', String(newBalance));
+          window.dispatchEvent(new CustomEvent('balanceUpdated', { detail: { balance: newBalance } }));
+          return data.user;
+        } else {
+          console.warn('saveGamePlay failed', data);
+          return null;
+        }
+      } catch (e) {
+        console.error('saveGamePlay error', e);
+        return null;
+      }
+    }
+
+    // Main game logic
     const MULTS=[1.92,3.84,7.68,15.36,30.72,61.44,122.88,245.76,491.52,983.04];
     const WIN_P=0.48;
 
-    // Game state
-    const betInput = document.getElementById('bet');
-    const betBox = document.getElementById('betbox');
-    const coinInner = document.getElementById('coinInner');
-    const optBlue = document.getElementById('opt-blue');
-    const optSilver = document.getElementById('opt-silver');
-    const hitsEl = document.getElementById('hits');
-    const multEl = document.getElementById('mult');
-    const patternBox = document.getElementById('patternBox');
-    const patternEl = document.getElementById('pattern');
-    const ladder = document.getElementById('ladder');
-    const betBtn = document.getElementById('betBtn');
+    const betInput=document.getElementById('bet');
+    const betBox=document.getElementById('betbox');
+    const coinInner=document.getElementById('coinInner');
+    const optBlue=document.getElementById('opt-blue');
+    const optSilver=document.getElementById('opt-silver');
+    const balanceEl = document.getElementById('balance');
 
-    let chosenSide = 'blue';
-    let step = 0;
-    let running = false;
-    let active = false;
-    let history = [];
-    let deg = 0;
-    let lastFlipAt = 0;
-    let currentUser = null;
-    let userBalance = 0;
+    const hitsEl=document.getElementById('hits');
+    const multEl=document.getElementById('mult');
+    const patternBox=document.getElementById('patternBox');
+    const patternEl=document.getElementById('pattern');
+    const ladder=document.getElementById('ladder');
+    const betBtn=document.getElementById('betBtn');
+    const backBtn=document.getElementById('backBtn');
 
-    // Back button function
-    function goBack() {
-      window.location.href = 'index.html'; // Change this to your main games page
+    let chosenSide='blue';
+    let step=0;
+    let running=false;
+    let active=false;
+    let history=[];
+    let deg=0;
+    let lastFlipAt=0;
+    let balance = 0;
+    let fullPattern = []; // Stores the full 10-flip pattern
+    let revealedPattern = []; // Stores the revealed flips
+
+    // Initialize balance display
+    async function updateBalance() {
+      const user = await getCurrentUser();
+      if (user) {
+        balance = user.balance;
+        balanceEl.textContent = balance.toFixed(2);
+      } else {
+        // If not logged in, redirect to login
+        window.location.href = 'login.html';
+      }
     }
 
-    function updateBalanceDisplay() {
-      // Balance is now handled by auth.js and backend
+    // Generate a full 10-flip random pattern
+    function generatePattern() {
+      fullPattern = [];
+      for (let i = 0; i < 10; i++) {
+        fullPattern.push(Math.random() < WIN_P ? 'blue' : 'silver');
+      }
+      revealedPattern = []; // Reset revealed pattern
+    }
+
+    // Update pattern display - show revealed flips, hide the rest
+    function updatePattern() {
+      patternEl.innerHTML='';
+      for (let i = 0; i < 10; i++) {
+        const dot=document.createElement('div');
+        if (i < revealedPattern.length) {
+          // Show revealed flips
+          dot.className='pt ' + revealedPattern[i];
+        } else {
+          // Show hidden flips
+          dot.className='pt hidden';
+        }
+        patternEl.appendChild(dot);
+      }
+      patternBox.style.display='block';
+    }
+
+    // Reveal all hidden flips in the pattern
+    function revealFullPattern() {
+      revealedPattern = [...fullPattern]; // Copy full pattern to revealed
+      updatePattern();
     }
 
     function renderLadder(){
@@ -230,7 +324,7 @@
     }
 
     function selectSideAndFlip(side){
-      if(!active || running || !currentUser) return;
+      if(!active || running) return;
       const now=Date.now(); if(now-lastFlipAt<150) return; lastFlipAt=now;
       chosenSide=side;
       optBlue.classList.toggle('active', side==='blue');
@@ -242,200 +336,137 @@
     optSilver.addEventListener('click',()=>selectSideAndFlip('silver'));
 
     function lockInputs(lock){
-      if(lock){ betBox.classList.add('disabled'); betInput.setAttribute('disabled',''); }
-      else { betBox.classList.remove('disabled'); betInput.removeAttribute('disabled'); }
+      if(lock){ 
+        betBox.classList.add('disabled'); 
+        betInput.setAttribute('disabled',''); 
+      }
+      else { 
+        betBox.classList.remove('disabled'); 
+        betInput.removeAttribute('disabled'); 
+      }
     }
 
     function updateStats(){
-      hitsEl.textContent=step; multEl.textContent= step>0 ? (MULTS[step-1].toFixed(2)+'×') : '0.00×';
+      hitsEl.textContent=step; 
+      multEl.textContent= step>0 ? (MULTS[step-1].toFixed(2)+'×') : '0.00×';
     }
 
     function updateButton(){
-      if(!currentUser) {
-        betBtn.textContent = 'Please Login';
-        betBtn.disabled = true;
-        return;
-      }
       if(!active){ 
-        betBtn.textContent='Bet'; 
+        betBtn.textContent='Bet';
+        betBtn.disabled = parseFloat(betInput.value) > balance;
+      } else {
+        betBtn.textContent = step>0 ? ('Cash Out ×'+MULTS[step-1].toFixed(2)) : 'Cash Out';
         betBtn.disabled = false;
-        return; 
       }
-      betBtn.textContent = step>0 ? ('Cash Out ×'+MULTS[step-1].toFixed(2)) : 'Cash Out';
-      betBtn.disabled = false;
-    }
-
-    function showPattern(){
-      patternEl.innerHTML='';
-      history.forEach(h=>{
-        const dot=document.createElement('div');
-        dot.className='pt '+(h.outcome==='blue'?'blue':'silver');
-        patternEl.appendChild(dot);
-      });
-      patternBox.style.display='block';
     }
 
     async function flip(){
-      if(!active || running || !currentUser) return;
+      if(!active || running) return;
+      running=true; enableSideTiles(false);
       
-      const betAmount = parseFloat(betInput.value) || 0;
-      if (betAmount <= 0) {
-        alert('Please enter a valid bet amount');
-        return;
-      }
-
-      // Check balance through backend
-      const user = await getCurrentUser();
-      if (!user || betAmount > user.balance) {
-        alert('Insufficient balance');
-        return;
-      }
-
-      running = true; 
-      enableSideTiles(false);
+      // Use the pre-generated pattern for this flip
+      const outcome = fullPattern[step];
+      const correct = (outcome === chosenSide);
       
-      const win = Math.random() < WIN_P;
-      const outcome = win ? chosenSide : (chosenSide === 'blue' ? 'silver' : 'blue');
-      const fullSpins = 2 + Math.floor(Math.random() * 3);
-      const finalOffset = (outcome === 'blue') ? 0 : 180;
-      deg += fullSpins * 360 + (finalOffset - (deg % 360));
-      coinInner.style.transform = `rotateY(${deg}deg)`;
+      // Add to revealed pattern
+      revealedPattern.push(outcome);
+      
+      const fullSpins=2+Math.floor(Math.random()*3);
+      const finalOffset=(outcome==='blue')?0:180;
+      deg += fullSpins*360 + (finalOffset - (deg%360));
+      coinInner.style.transform=`rotateY(${deg}deg)`;
 
-      setTimeout(async () => {
-        const correct = (outcome === chosenSide);
-        history.push({ correct, outcome });
-        
-        if (correct) {
-          step++; 
-          renderLadder(); 
-          updateStats(); 
-          updateButton(); 
-          scrollLadderTo(step - 1);
-          if (step >= MULTS.length) { 
-            await cashout(true); 
-            return; 
-          }
-          running = false; 
-          enableSideTiles(true);
+      setTimeout(async ()=>{
+        history.push({correct,outcome});
+        if(correct){
+          step++; renderLadder(); updateStats(); updateButton(); scrollLadderTo(step-1);
+          updatePattern(); // Update pattern with newly revealed flip
+          if(step>=MULTS.length){ await cashout(true); return; }
+          running=false; enableSideTiles(true);
         } else {
-          renderLadder(); 
-          updateStats();
-          
-          // Save loss to backend - deduct the bet amount
-          const totalBet = betAmount;
-          const totalWin = 0;
-          showSpinner(true);
-          const result = await saveGamePlay('coinflip', totalBet, totalWin);
-          showSpinner(false);
-          
-          active = false; 
-          running = false; 
-          lockInputs(false); 
-          updateButton();
+          renderLadder(); updateStats();
+          active=false; running=false; lockInputs(false); updateButton();
           enableSideTiles(false);
-          showPattern();
+          revealFullPattern(); // Reveal all remaining flips on loss
         }
-      }, 1020);
+      },1020);
     }
 
-    async function cashout(auto = false){
-      if(step <= 0 && !auto){ return; }
+    async function cashout(auto=false){
+      if(step<=0 && !auto){ return; }
+      const amount=(parseFloat(betInput.value||'0')||0) * MULTS[step-1];
       
-      const betAmount = parseFloat(betInput.value) || 0;
-      const winAmount = betAmount * MULTS[step - 1];
-      
-      // Save win to backend - we only record the win amount, bet was already deducted
-      showSpinner(true);
-      const result = await saveGamePlay('coinflip', 0, winAmount);
-      showSpinner(false);
-
-      alert((auto ? 'Auto-cashed ' : 'Cashed ') + 'out at ×' + MULTS[step - 1].toFixed(2) + ' = ' + winAmount.toFixed(2));
-      
-      step = 0; 
-      history = []; 
-      active = false; 
-      running = false; 
-      updateStats(); 
-      renderLadder(); 
-      patternBox.style.display = 'none';
-      lockInputs(false); 
-      updateButton(); 
-      enableSideTiles(false);
-      deg = 0; 
-      coinInner.style.transform = `rotateY(${deg}deg)`;
-      ladder.scrollTo({ left: 0, behavior: 'smooth' });
-    }
-
-    betBtn.addEventListener('click', async () => {
-      if (!currentUser) {
-        alert('Please login to play');
+      // Save winnings to backend
+      const result = await saveGamePlay('Coinflip', 0, amount);
+      if (result) {
+        balance = result.balance;
+        alert((auto? 'Auto-cashed ':'Cashed ')+'out at ×'+MULTS[step-1].toFixed(2)+' = '+amount.toFixed(2));
+      } else {
+        alert('Error cashing out');
         return;
       }
       
-      if (!active) {
-        const betAmount = parseFloat(betInput.value) || 0;
-        if (betAmount <= 0) {
-          alert('Please enter a valid bet amount');
-          return;
-        }
+      step=0; history=[]; active=false; running=false; updateStats(); renderLadder();
+      lockInputs(false); updateButton(); enableSideTiles(false);
+      deg=0; coinInner.style.transform=`rotateY(${deg}deg)`;
+      ladder.scrollTo({left:0, behavior:'smooth'});
+      revealFullPattern(); // Reveal all remaining flips on cashout
+    }
 
-        // Check balance through backend
-        const user = await getCurrentUser();
-        if (!user || betAmount > user.balance) {
-          alert('Insufficient balance');
+    betBtn.addEventListener('click', async ()=>{
+      if(!active){
+        const betAmount = parseFloat(betInput.value);
+        if (betAmount > balance) {
+          alert("Insufficient balance!");
           return;
         }
         
-        step = 0; 
-        history = []; 
-        patternBox.style.display = 'none'; 
-        renderLadder(); 
-        updateStats();
-        active = true; 
-        lockInputs(true); 
-        enableSideTiles(true); 
-        updateButton();
+        // Save initial bet to backend
+        const result = await saveGamePlay('Coinflip', betAmount, 0);
+        if (result) {
+          balance = result.balance;
+          
+          step=0; history=[]; renderLadder(); updateStats();
+          active=true; lockInputs(true); enableSideTiles(true); updateButton();
+          
+          // Generate new pattern for this round
+          generatePattern();
+          updatePattern();
+        } else {
+          alert('Error placing bet');
+        }
         return;
       }
-      if (step > 0 && !running) { 
-        await cashout(false); 
-      }
+      if(step>0 && !running){ await cashout(false); }
     });
 
-    // Auth functions
-    function showSpinner(show) {
-      if (show) {
-        document.getElementById('spinner').classList.add('active');
-      } else {
-        document.getElementById('spinner').classList.remove('active');
-      }
-    }
+    // Add chip functionality
+    document.querySelectorAll('.chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const currentBet = parseFloat(betInput.value) || 0;
+        const multi = parseFloat(chip.dataset.multi);
+        const newBet = currentBet * multi;
+        betInput.value = Math.max(0.01, newBet).toFixed(2);
+        updateButton();
+      });
+    });
+
+    // Update button state when bet amount changes
+    betInput.addEventListener('input', updateButton);
+
+    // Back button functionality
+    backBtn.addEventListener('click', () => {
+      window.location.href = 'index.html'; // Olettaen että pääsivu on index.html
+    });
 
     // Initialize game
-    async function init(){
-      // Check if user is already logged in
-      const user = await getCurrentUser();
-      if (user) {
-        currentUser = user;
-        updateButton();
-      } else {
-        // If not logged in, redirect to login
-        window.location.href = 'index.html';
-      }
-
+    async function init() {
       renderLadder(); 
       updateStats(); 
       updateButton(); 
       enableSideTiles(false);
-
-      // Chip handlers
-      document.querySelectorAll('.chip').forEach(chip => {
-        chip.addEventListener('click', () => {
-          const multi = parseFloat(chip.dataset.multi);
-          const current = parseFloat(betInput.value) || 0;
-          betInput.value = (current * multi).toFixed(2);
-        });
-      });
+      await updateBalance();
     }
 
     init();

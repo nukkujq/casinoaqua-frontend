@@ -1,5 +1,3 @@
-[file name]: crosstheroad.html
-[file content begin]
 <!doctype html>
 <html lang="en">
 <head>
@@ -45,26 +43,16 @@
   button{padding:8px 12px;border-radius:8px;border:0;background:linear-gradient(180deg,#124d5a,#0a2d35);color:#eaf6ff;cursor:pointer}
   button:disabled{opacity:0.5;cursor:not-allowed}
   .msg{height:30px;font-size:13px;color:transparent}
-  
-  /* Back button styles */
-  .back-btn-container { margin-bottom: 16px; }
-  .back-btn { background: linear-gradient(180deg, #124d5a, #0a2d35); color: #eaf6ff; border: 1px solid #1c6b7c; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; width: 100%; }
-  .back-btn:hover { background: linear-gradient(180deg, #166876, #0c3a43); }
-  
+  #backBtn{background:linear-gradient(180deg,#5a1212,#350a0a);margin-top:10px;}
   @media(max-width:980px){.wrap{padding:8px}main{flex-direction:column}.side{width:100%}#gameArea{width:100%}}
 </style>
 </head>
 <body>
   <div class="wrap">
-    <!-- Back button -->
-    <div class="back-btn-container">
-      <button class="back-btn" onclick="goBack()">← Back to Games</button>
-    </div>
-    
     <header>
       <div class="title">Cross the Ocean</div>
       <div class="hud">
-        <div class="chip" id="creditsChip">Credits: 0</div>
+        <div class="chip" id="creditsChip">Loading...</div>
         <div class="chip" id="betChip">Bet: —</div>
       </div>
     </header>
@@ -85,14 +73,69 @@
         </div>
         <div><button id="cashBtn" disabled>Cash Out</button></div>
         <div class="msg" id="message"></div>
+        <button id="backBtn">Back to Games</button>
       </aside>
     </main>
   </div>
 
-<!-- Include auth.js -->
-<script src="auth.js"></script>
-
 <script>
+// Include auth.js functions
+const SERVER_URL = 'https://casinoaqua-server.onrender.com';
+
+function getToken() {
+  return localStorage.getItem('token');
+}
+
+async function getCurrentUser() {
+  const token = getToken();
+  if (!token) return null;
+  try {
+    const res = await fetch(`${SERVER_URL}/me`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    const data = await res.json();
+    if (data && data.success) {
+      localStorage.setItem('userBalance', String(data.user.balance || 0));
+      return data.user;
+    }
+  } catch (e) {
+    console.error('getCurrentUser error', e);
+  }
+  return null;
+}
+
+async function saveGamePlay(game, bet, win) {
+  const token = getToken();
+  if (!token) return null;
+  try {
+    const res = await fetch(`${SERVER_URL}/play`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ game, bet, win })
+    });
+    const data = await res.json();
+    if (data && data.success) {
+      const newBalance = data.user.balance;
+      // Päivitä UI ja localStorage
+      const el = document.getElementById('creditsChip');
+      if (el) el.innerText = 'Credits: ' + newBalance;
+      localStorage.setItem('userBalance', String(newBalance));
+      window.dispatchEvent(new CustomEvent('balanceUpdated', { detail: { balance: newBalance } }));
+      return data.user;
+    } else {
+      console.warn('saveGamePlay failed', data);
+      return null;
+    }
+  } catch (e) {
+    console.error('saveGamePlay error', e);
+    return null;
+  }
+}
+
+// Main game logic
 (() => {
   const TOTAL_STEPS=10,LOSS_INC=0.03;
   const RISK_LEVELS={low:0.10,medium:0.14,high:0.20};
@@ -103,23 +146,11 @@
   const riskSelect=document.getElementById('riskSelect');
   const startBtn=document.getElementById('startBtn');
   const cashBtn=document.getElementById('cashBtn');
+  const backBtn=document.getElementById('backBtn');
   const fishEl=document.getElementById('fish');
   const sharkEl=document.getElementById('shark');
-  const messageEl=document.getElementById('message');
   let credits=0,bet=50,inPlay=false,currentStep=0,mults=[],lossProbs=[],stepEls=[],stepX=[];
   let BASE_LOSS=RISK_LEVELS.low;
-
-  // Initialize balance from backend
-  async function initBalance() {
-    const user = await getCurrentUser();
-    if (user) {
-      credits = user.balance;
-      updateUI();
-    } else {
-      // If not logged in, redirect to login
-      window.location.href = 'index.html';
-    }
-  }
 
   function bubbles(){
     for(let i=0;i<6;i++){
@@ -155,7 +186,7 @@
     fishEl.style.left=(pad-16)+'px';fishEl.style.opacity='1';
     sharkEl.style.display='none';sharkEl.style.left='-200px';
   }
-  function updateUI(){
+  function ui(){
     creditsChip.textContent='Credits: '+credits;
     betChip.textContent=inPlay?('Bet: '+bet+' (in play)'):'Bet: —';
     for(let k=1;k<=TOTAL_STEPS;k++){
@@ -174,24 +205,16 @@
     if(inPlay)return;
     BASE_LOSS=RISK_LEVELS[riskSelect.value];
     bet=Math.max(1,Math.floor(Number(betInput.value)||1));
-    if(bet>credits){
-      showMessage('Bet too high!', '#ff6b6b');
-      return;
-    }
+    if(bet>credits){alert('Bet too high');return}
     
-    // Deduct bet from balance via backend
-    const result = await saveGamePlay('crosstheroad', bet, 0);
+    // Save initial bet to backend
+    const result = await saveGamePlay('Cross the Ocean', bet, 0);
     if (result) {
       credits = result.balance;
-      inPlay=true;
-      currentStep=0;
-      compute();
-      buildSteps();
-      updateUI();
-      moveFish(0);
-      showMessage('Game started! Good luck!', '#51cf66');
+      inPlay=true;currentStep=0;
+      compute();buildSteps();ui();moveFish(0);
     } else {
-      showMessage('Failed to start game', '#ff6b6b');
+      alert('Error placing bet');
     }
   }
   function moveFish(step){
@@ -199,48 +222,45 @@
     else{let x=stepX[step];fishEl.style.left=(x-24)+'px'}
   }
   function clickStep(s){if(!inPlay||s!==currentStep+1)return;tryStep(s)}
-  function tryStep(s){
+  async function tryStep(s){
     let fail=Math.random()<lossProbs[s];
     moveFish(s);
-    setTimeout(()=>{
-      if(fail){lose(s)}else{currentStep=s;updateUI();}
+    setTimeout(async ()=>{
+      if(fail){
+        await lose(s);
+      }else{
+        currentStep=s;
+        ui();
+      }
     },260);
   }
-  function lose(s){
+  async function lose(s){
     sharkEl.style.display='block';
     sharkEl.animate([{left:'-200px'},{left:(fishEl.offsetLeft-60)+'px'}],{duration:600,fill:'forwards'});
     setTimeout(()=>{fishEl.style.opacity='0';},500);
-    inPlay=false;
-    currentStep=s-1;
-    showMessage('Shark attack! You lost your bet.', '#ff6b6b');
-    updateUI();
+    inPlay=false;currentStep=s-1;
+    
+    // Game lost, no winnings to save
+    await getCurrentUser().then(user => {
+      if (user) credits = user.balance;
+    });
+    
+    ui();
   }
   async function cash(){
     if(!inPlay||currentStep<=0)return;
     let m=mults[currentStep],p=Math.round(bet*m*100)/100;
     
     // Save winnings to backend
-    const result = await saveGamePlay('crosstheroad', 0, p);
+    const result = await saveGamePlay('Cross the Ocean', 0, p);
     if (result) {
       credits = result.balance;
       inPlay=false;
-      showMessage(`Cashed out! Won $${p.toFixed(2)}!`, '#51cf66');
+      ui();
     } else {
-      // If save failed, revert locally
-      credits += p;
-      showMessage('Cash out failed', '#ff6b6b');
+      alert('Error cashing out');
     }
-    updateUI();
   }
-  
-  function showMessage(text, color) {
-    messageEl.textContent = text;
-    messageEl.style.color = color;
-    setTimeout(() => {
-      messageEl.style.color = 'transparent';
-    }, 3000);
-  }
-
   document.addEventListener('keydown',e=>{
     if((e.key===' '||e.key==='Spacebar')&&inPlay){
       e.preventDefault();let n=currentStep+1;
@@ -253,23 +273,28 @@
       let n=currentStep+1;if(n<=TOTAL_STEPS)clickStep(n);
     }
   });
-  
-  // Back button function
-  window.goBack = function() {
-    window.location.href = 'index.html';
-  };
-
-  function init(){
-    compute();
-    buildSteps();
-    initBalance();
+  backBtn.addEventListener('click', () => {
+    window.location.href = 'index.html'; // Olettaen että pääsivu on index.html
+  });
+  async function init(){
+    compute();buildSteps();ui();
+    
+    // Load user balance from backend
+    const user = await getCurrentUser();
+    if (user) {
+      credits = user.balance;
+      creditsChip.textContent = 'Credits: ' + credits;
+    } else {
+      // If not logged in, redirect to login
+      window.location.href = 'login.html';
+    }
+    
     startBtn.addEventListener('click',start);
     cashBtn.addEventListener('click',cash);
-    window.addEventListener('resize',()=>{buildSteps();moveFish(currentStep);updateUI()});
+    window.addEventListener('resize',()=>{buildSteps();moveFish(currentStep);ui()});
   }
   init();
 })();
 </script>
 </body>
 </html>
-[file content end]

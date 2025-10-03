@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mines Game</title>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      background: radial-gradient(circle at center, #02131e, #000814);
+      font-family: sans-serif;
+      color: #ccefff;
+      overflow: hidden;
+    }
+    .sidebar {
+      width: 260px;
+      background: #031521;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      box-sizing: border-box;
+      border-right: 1px solid #02202f;
+    }
+    .sidebar h2 {
+      margin: 0 0 12px;
+      font-size: 18px;
+      color: #66e0ff;
+    }
+    .sidebar label {
+      font-size: 13px;
+      margin-top: 8px;
+      margin-bottom: 6px;
+      color: #99dfff;
+    }
+    input, select, button {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: none;
+      outline: none;
+      font-size: 14px;
+      margin-bottom: 10px;
+      box-sizing: border-box;
+    }
+    input[type="number"], select {
+      background: #02202f;
+      color: #ccefff;
+    }
+    button {
+      background: linear-gradient(180deg, #1ecfff, #0077aa);
+      color: #001822;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.18s;
+    }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .info {
+      font-size: 13px;
+      color: #bfefff;
+      margin-bottom: 8px;
+    }
+    .big {
+      font-size: 20px;
+      color: #dff9ff;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .game-area {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(40px, 1fr));
+      grid-template-rows: repeat(5, minmax(40px, 1fr));
+      gap: 8px;
+      width: 80vmin;
+      max-width: 500px;
+    }
+    .tile {
+      aspect-ratio: 1 / 1;
+      background: #0a1a24;
+      border-radius: 10px;
+      border: 1px solid #03374f;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.3s ease;
+      user-select: none;
+    }
+    .tile.revealing { animation: flip 0.35s forwards; }
+    @keyframes flip { 0%{transform:scale(1)}50%{transform:scale(0.2)}100%{transform:scale(1)} }
+    .tile.revealed.safe .pearl {
+      width: 60%; height: 60%; border-radius: 50%;
+      background: radial-gradient(circle at 30% 30%, #66e0ff, #006080);
+      box-shadow: 0 0 12px #33d4ff, inset -4px -4px 8px rgba(0,0,0,0.6);
+      animation: glow 1s infinite alternate;
+    }
+    @keyframes glow { from{box-shadow:0 0 6px #33d4ff} to{box-shadow:0 0 16px #66e0ff} }
+    .tile.revealed.mine { background: #8a0010; }
+    .tile.revealed.mine .bomb {
+      width: 50%; height: 50%; background: radial-gradient(circle at 40% 40%, #555, #111);
+      border-radius: 50%; position: relative;
+    }
+    .tile.revealed.mine .bomb::after {
+      content: ""; position: absolute; top: -15%; left: 45%; width: 10%; height: 25%;
+      background: #222; border-radius: 3px;
+    }
+    .status-row { display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
+    .status-pill { background:#01222b; padding:6px 8px; border-radius:8px; font-size:13px; color:#bfefff; }
+    /* Cool cashout message */
+    #cashoutMessage {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 48px;
+      font-weight: 800;
+      color: #4dff4d; /* green text */
+      text-shadow: 0 0 20px #00ff00, 0 0 40px #00cc00;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.5s ease;
+    }
+    #cashoutMessage.show {
+      opacity: 1;
+      animation: pulse 1.5s infinite alternate;
+    }
+    @keyframes pulse {
+      from { text-shadow: 0 0 10px #00ff00, 0 0 20px #00cc00; }
+      to   { text-shadow: 0 0 25px #66ff66, 0 0 50px #00ff00; }
+    }
+    #backBtn {
+      background: linear-gradient(180deg, #5a1212, #350a0a);
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <h2>Mines Game</h2>
+
+    <div class="big">Balance: <span id="balanceDisplay">Loading...</span> €</div>
+
+    <label for="bet">Bet (€)</label>
+    <input id="bet" type="number" min="0.01" step="0.01" value="1.00" />
+
+    <label for="mines">Mines</label>
+    <select id="mines"></select>
+
+    <div class="status-row">
+      <div class="status-pill">Multiplier: <span id="multDisplay">1.00×</span></div>
+      <div class="status-pill">Cashout: <span id="winPreview">0.00 €</span></div>
+    </div>
+
+    <div style="height:8px"></div>
+
+    <button id="action">Start</button>
+    <button id="backBtn">Back to Games</button>
+  </div>
+
+  <div class="game-area">
+    <div class="board" id="board"></div>
+    <div id="cashoutMessage"></div>
+  </div>
+
+  <script>
+    // Include auth.js functions
+    const SERVER_URL = 'https://casinoaqua-server.onrender.com';
+
+    function getToken() {
+      return localStorage.getItem('token');
+    }
+
+    async function getCurrentUser() {
+      const token = getToken();
+      if (!token) return null;
+      try {
+        const res = await fetch(`${SERVER_URL}/me`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data && data.success) {
+          localStorage.setItem('userBalance', String(data.user.balance || 0));
+          return data.user;
+        }
+      } catch (e) {
+        console.error('getCurrentUser error', e);
+      }
+      return null;
+    }
+
+    async function saveGamePlay(game, bet, win) {
+      const token = getToken();
+      if (!token) return null;
+      try {
+        const res = await fetch(`${SERVER_URL}/play`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ game, bet, win })
+        });
+        const data = await res.json();
+        if (data && data.success) {
+          const newBalance = data.user.balance;
+          // Päivitä UI ja localStorage
+          const el = document.getElementById('balanceDisplay');
+          if (el) el.innerText = newBalance.toFixed(2);
+          localStorage.setItem('userBalance', String(newBalance));
+          window.dispatchEvent(new CustomEvent('balanceUpdated', { detail: { balance: newBalance } }));
+          return data.user;
+        } else {
+          console.warn('saveGamePlay failed', data);
+          return null;
+        }
+      } catch (e) {
+        console.error('saveGamePlay error', e);
+        return null;
+      }
+    }
+
+    // Main game logic
+    const state = {
+      total: 25,
+      mines: 3,
+      bet: 1,
+      tiles: [],
+      revealed: new Set(),
+      inRound: false,
+      ended: false,
+      balance: 0,
+    };
+
+    const els = {
+      board: document.getElementById('board'),
+      bet: document.getElementById('bet'),
+      mines: document.getElementById('mines'),
+      action: document.getElementById('action'),
+      balanceDisplay: document.getElementById('balanceDisplay'),
+      multDisplay: document.getElementById('multDisplay'),
+      winPreview: document.getElementById('winPreview'),
+      cashoutMessage: document.getElementById('cashoutMessage'),
+      backBtn: document.getElementById('backBtn')
+    };
+
+    for (let i = 1; i <= 24; i++) {
+      const o = document.createElement('option');
+      o.value = i; o.textContent = i;
+      if (i === 3) o.selected = true;
+      els.mines.appendChild(o);
+    }
+
+    function shuffle(a){
+      const arr = a.slice();
+      for (let i=arr.length-1;i>0;i--){
+        const j = Math.floor(Math.random()*(i+1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    function format(n){ return parseFloat(n).toFixed(2); }
+
+    function computeMultiplier(revealedSafeCount, mines){
+      const N = state.total;
+      const M = mines;
+      const S = N - M;
+      if (S <= 0) return 1;
+      const r = revealedSafeCount;
+      const maxMult = 2 + M * 0.6;
+      const power = 0.85;
+      const frac = Math.min(1, r / S);
+      return 1 + (maxMult - 1) * Math.pow(frac, power);
+    }
+
+    function updateUI(){
+      els.balanceDisplay.textContent = format(state.balance);
+      const mult = computeMultiplier(state.revealed.size, state.mines);
+      els.multDisplay.textContent = mult.toFixed(2) + '×';
+      els.winPreview.textContent = format(state.bet * mult);
+      const maxBet = Math.max(0.01, Math.floor(state.balance*100)/100);
+      els.bet.max = maxBet;
+      if (parseFloat(els.bet.value) > state.balance) {
+        els.bet.value = format(Math.min(state.balance, 1));
+        state.bet = parseFloat(els.bet.value);
+      }
+    }
+
+    function buildBoard(){
+      els.board.innerHTML = '';
+      for (let i=0;i<state.total;i++){
+        const t=document.createElement('div');
+        t.className='tile';
+        t.dataset.i=i;
+        t.addEventListener('click',onTile);
+        els.board.appendChild(t);
+      }
+    }
+
+    async function start(){
+      const rawBet = parseFloat(els.bet.value) || 0;
+      if (rawBet <= 0) { alert('Set a bet greater than 0'); return; }
+      if (rawBet > state.balance) { alert('Bet exceeds balance'); return; }
+
+      state.mines = parseInt(els.mines.value,10);
+      state.bet = parseFloat(rawBet);
+      
+      // Save initial bet to backend
+      const result = await saveGamePlay('Mines', state.bet, 0);
+      if (result) {
+        state.balance = result.balance;
+        state.inRound=true; state.ended=false; state.revealed.clear();
+
+        const arr = shuffle([...Array(state.total).keys()]);
+        const mines = new Set(arr.slice(0,state.mines));
+        state.tiles = [...Array(state.total).keys()].map(i => mines.has(i));
+        [...els.board.children].forEach(t => { t.className='tile'; t.innerHTML=''; });
+
+        els.cashoutMessage.classList.remove("show");
+        els.cashoutMessage.textContent = "";
+
+        els.action.textContent="Cash Out";
+        els.mines.disabled = true;
+        els.bet.disabled = true;
+
+        updateUI();
+      } else {
+        alert('Error placing bet');
+      }
+    }
+
+    function onTile(e){
+      if(!state.inRound || state.ended) return;
+      const i = parseInt(e.currentTarget.dataset.i,10);
+      if (state.revealed.has(i)) return;
+
+      state.revealed.add(i);
+      const tile = e.currentTarget;
+      tile.classList.add('revealing');
+
+      setTimeout(()=>{
+        tile.classList.remove('revealing');
+        if (state.tiles[i]) {
+          tile.classList.add('revealed','mine');
+          const b = document.createElement('div'); b.className='bomb'; tile.appendChild(b);
+          end(false);
+        } else {
+          tile.classList.add('revealed','safe');
+          const p = document.createElement('div'); p.className='pearl'; tile.appendChild(p);
+          updateUI();
+        }
+      }, 260);
+    }
+
+    async function end(win){
+      state.inRound = false; state.ended = true;
+      els.action.textContent = "Start";
+      els.mines.disabled = false;
+      els.bet.disabled = false;
+
+      if (!win) {
+        revealAll();
+        updateUI();
+      } else {
+        const mult = computeMultiplier(state.revealed.size, state.mines);
+        const payout = +(state.bet * mult);
+        
+        // Save winnings to backend
+        const result = await saveGamePlay('Mines', 0, payout);
+        if (result) {
+          state.balance = result.balance;
+
+          // Show green message
+          els.cashoutMessage.textContent = "Cashed Out ×" + mult.toFixed(2);
+          els.cashoutMessage.classList.add("show");
+
+          revealAll();
+          updateUI();
+        } else {
+          alert('Error cashing out');
+        }
+      }
+    }
+
+    function cashout(){
+      if(!state.inRound) return;
+      end(true);
+    }
+
+    function revealAll(){
+      [...els.board.children].forEach((tile,i)=>{
+        if (tile.classList.contains('revealed')) return;
+        if (state.tiles[i]) {
+          tile.classList.add('revealed','mine');
+          const b=document.createElement('div'); b.className='bomb'; tile.appendChild(b);
+        } else {
+          tile.classList.add('revealed','safe');
+          const p=document.createElement('div'); p.className='pearl'; tile.appendChild(p);
+        }
+      });
+    }
+
+    els.action.addEventListener('click',()=>{
+      if (!state.inRound) {
+        start();
+      } else {
+        cashout();
+      }
+    });
+
+    els.bet.addEventListener('input', ()=>{
+      const v = parseFloat(els.bet.value) || 0;
+      if (v > state.balance) {
+        if (!state.inRound) {
+          els.bet.value = format(state.balance);
+        } else {
+          els.bet.value = format(state.bet);
+        }
+      }
+      state.bet = parseFloat(els.bet.value) || 0;
+      updateUI();
+    });
+
+    els.mines.addEventListener('change', ()=>{
+      state.mines = parseInt(els.mines.value, 10);
+      updateUI();
+    });
+
+    els.backBtn.addEventListener('click', () => {
+      window.location.href = 'index.html'; // Olettaen että pääsivu on index.html
+    });
+
+    // Initialize game
+    async function init() {
+      buildBoard();
+      
+      // Load user balance from backend
+      const user = await getCurrentUser();
+      if (user) {
+        state.balance = user.balance;
+        updateUI();
+      } else {
+        // If not logged in, redirect to login
+        window.location.href = 'login.html';
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
