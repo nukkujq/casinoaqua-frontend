@@ -393,26 +393,26 @@
       },1020);
     }
 
-    async function cashout(auto=false){
-      if(step<=0 && !auto){ return; }
-      const amount=(parseFloat(betInput.value||'0')||0) * MULTS[step-1];
-      
-      // Save winnings to backend
-      const result = await saveGamePlay('Coinflip', 0, amount);
-      if (result) {
-        balance = result.balance;
-        alert((auto? 'Auto-cashed ':'Cashed ')+'out at ×'+MULTS[step-1].toFixed(2)+' = '+amount.toFixed(2));
-      } else {
-        alert('Error cashing out');
-        return;
-      }
-      
-      step=0; history=[]; active=false; running=false; updateStats(); renderLadder();
-      lockInputs(false); updateButton(); enableSideTiles(false);
-      deg=0; coinInner.style.transform=`rotateY(${deg}deg)`;
-      ladder.scrollTo({left:0, behavior:'smooth'});
-      revealFullPattern(); // Reveal all remaining flips on cashout
-    }
+async function cashout(auto=false){
+  if(step<=0 && !auto){ return; }
+  const amount=(parseFloat(betInput.value||'0')||0) * MULTS[step-1];
+  
+  // Save winnings to backend - FIXED: bet=0, win=amount
+  const result = await saveGamePlay('Coinflip', 0, amount);
+  if (result) {
+    balance = result.balance;
+    alert((auto? 'Auto-cashed ':'Cashed ')+'out at ×'+MULTS[step-1].toFixed(2)+' = '+amount.toFixed(2));
+    
+    step=0; history=[]; active=false; running=false; updateStats(); renderLadder();
+    lockInputs(false); updateButton(); enableSideTiles(false);
+    deg=0; coinInner.style.transform=`rotateY(${deg}deg)`;
+    ladder.scrollTo({left:0, behavior:'smooth'});
+    revealFullPattern(); // Reveal all remaining flips on cashout
+  } else {
+    alert('Error cashing out');
+    return;
+  }
+}
 
     betBtn.addEventListener('click', async ()=>{
       if(!active){

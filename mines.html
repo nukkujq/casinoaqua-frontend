@@ -360,40 +360,41 @@
       }, 260);
     }
 
-    async function end(win){
-      state.inRound = false; state.ended = true;
-      els.action.textContent = "Start";
-      els.mines.disabled = false;
-      els.bet.disabled = false;
+async function end(win){
+  state.inRound = false; state.ended = true;
+  els.action.textContent = "Start";
+  els.mines.disabled = false;
+  els.bet.disabled = false;
 
-      if (!win) {
-        revealAll();
-        updateUI();
-      } else {
-        const mult = computeMultiplier(state.revealed.size, state.mines);
-        const payout = +(state.bet * mult);
-        
-        // Save winnings to backend
-        const result = await saveGamePlay('Mines', 0, payout);
-        if (result) {
-          state.balance = result.balance;
+  if (!win) {
+    // Häviö - ei tarvitse tallentaa uudestaan, koska bet vähennettiin jo aloituksessa
+    revealAll();
+    updateUI();
+  } else {
+    const mult = computeMultiplier(state.revealed.size, state.mines);
+    const payout = +(state.bet * mult);
+    
+    // Voitto - bet=0 koska se on jo vähennetty, win=payout
+    const result = await saveGamePlay('Mines', 0, payout);
+    if (result) {
+      state.balance = result.balance;
 
-          // Show green message
-          els.cashoutMessage.textContent = "Cashed Out ×" + mult.toFixed(2);
-          els.cashoutMessage.classList.add("show");
+      // Show green message
+      els.cashoutMessage.textContent = "Cashed Out ×" + mult.toFixed(2);
+      els.cashoutMessage.classList.add("show");
 
-          revealAll();
-          updateUI();
-        } else {
-          alert('Error cashing out');
-        }
-      }
+      revealAll();
+      updateUI();
+    } else {
+      alert('Error cashing out');
     }
+  }
+}
 
-    function cashout(){
-      if(!state.inRound) return;
-      end(true);
-    }
+function cashout(){
+  if(!state.inRound) return;
+  end(true);
+}
 
     function revealAll(){
       [...els.board.children].forEach((tile,i)=>{
